@@ -4,7 +4,6 @@ import toast from "react-hot-toast"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   Bell,
-  Building2,
   ChevronDown,
   ClipboardList,
   FileBarChart,
@@ -24,7 +23,6 @@ const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/toners", label: "Toners", icon: Package },
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
-  { to: "/empresas", label: "Empresas", icon: Building2 },
   { to: "/utilizadores", label: "Utilizadores", icon: Users },
   { to: "/relatorios", label: "Relatórios", icon: FileBarChart },
 ]
