@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Building2, Package, User } from "lucide-react"
+import { Building2, Package, Search, User } from "lucide-react"
 import { usePedidos, useAtualizarEstadoPedido } from "@/hooks/usePedidos"
 import {
   PEDIDO_ESTADO_LABEL,
@@ -55,12 +55,29 @@ export function PedidosPage() {
   const { data: pedidos, isLoading } = usePedidos()
   const atualizarEstado = useAtualizarEstadoPedido()
   const [filtro, setFiltro] = useState<PedidoEstado | "todos">("todos")
+  const [pesquisa, setPesquisa] = useState("")
 
   const filtrados = useMemo(() => {
     if (!pedidos) return []
-    if (filtro === "todos") return pedidos
-    return pedidos.filter((p) => p.estado === filtro)
-  }, [pedidos, filtro])
+    const termo = pesquisa.trim().toLowerCase()
+
+    return pedidos.filter((p) => {
+      if (filtro !== "todos" && p.estado !== filtro) return false
+      if (!termo) return true
+
+      return (
+        String(p.numero).includes(termo) ||
+        p.empresas?.nome?.toLowerCase().includes(termo) ||
+        p.profiles?.full_name?.toLowerCase().includes(termo) ||
+        p.pedido_itens.some(
+          (item) =>
+            item.toners?.marca?.toLowerCase().includes(termo) ||
+            item.toners?.modelo?.toLowerCase().includes(termo) ||
+            item.toners?.referencia?.toLowerCase().includes(termo)
+        )
+      )
+    })
+  }, [pedidos, filtro, pesquisa])
 
   function avancar(pedido: Pedido) {
     const proximo = PROXIMO_ESTADO[pedido.estado]
@@ -88,7 +105,17 @@ export function PedidosPage() {
         </p>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-6 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-sm sm:max-w-sm">
+        <Search className="size-4 text-muted-foreground" />
+        <input
+          value={pesquisa}
+          onChange={(e) => setPesquisa(e.target.value)}
+          placeholder="Pesquisar por nº, empresa, cliente ou toner..."
+          className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
         {ESTADOS_FILTRO.map((estado) => (
           <button
             key={estado}
