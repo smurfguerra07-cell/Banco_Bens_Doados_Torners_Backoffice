@@ -2,15 +2,9 @@
 
 ## Branches
 
-| Branch      | Propósito                                              | Protegida |
-|-------------|---------------------------------------------------------|-----------|
-| `main`      | Produção — reflete sempre o que está em `admin.bancodebensdoados.pt` | Sim |
-| `develop`   | Integração — base para novas features                  | Sim |
-| `feature/*` | Nova funcionalidade (ex: `feature/dashboard-widgets`)   | Não |
-| `fix/*`     | Correção de bug (ex: `fix/reserva-stock`)               | Não |
-| `chore/*`   | Manutenção, config, dependências, migrações (ex: `chore/migration-toners`) | Não |
+Repositório privado, trabalho solo — sem `develop` nem Pull Requests obrigatórios. Trabalha diretamente em `main`, que é a branch que o Vercel usa para produção (`admin.bancodebensdoados.pt`).
 
-Fluxo: `feature/*` / `fix/*` / `chore/*` → PR para `develop` → (após validação) PR de `develop` para `main`.
+Branches como `feature/*` / `fix/*` / `chore/*` são opcionais, úteis quando quiseres testar algo isoladamente antes de ir para `main` — o Vercel gera automaticamente uma Preview Deployment para qualquer branch ou PR criado.
 
 ## Commits — Conventional Commits
 

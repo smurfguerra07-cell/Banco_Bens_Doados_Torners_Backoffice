@@ -26,9 +26,7 @@ Este repositório é a **fonte da verdade** da configuração do Supabase partil
 
 ## Branches
 
-- `main` — produção (deploy automático para `admin.bancodebensdoados.pt`).
-- `develop` — integração/staging.
-- `feature/*`, `fix/*`, `chore/*` — trabalho em curso, mergeado via Pull Request para `develop`.
+Trabalho direto em `main` (deploy automático para `admin.bancodebensdoados.pt`). `feature/*`/`fix/*`/`chore/*` são opcionais para testar algo isolado via Preview Deployment antes de ir para `main`.
 
 Ver [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) para a convenção de commits e branches.
 
