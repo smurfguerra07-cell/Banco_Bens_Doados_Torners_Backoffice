@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+build/
+
+# Env files (nunca commitar segredos)
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel
+
+# Supabase CLI (gerado localmente por `supabase init`, específico da máquina)
+supabase/.branches
+supabase/.temp
+supabase/config.toml
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Testing / coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
