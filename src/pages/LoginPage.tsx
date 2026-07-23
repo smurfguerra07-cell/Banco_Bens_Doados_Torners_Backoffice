@@ -1,8 +1,36 @@
+import { type FormEvent, useState } from "react"
+import { useLocation, useNavigate } from "react-router"
 import { motion } from "framer-motion"
+import toast from "react-hot-toast"
 import { Lock, Mail } from "lucide-react"
 import logo from "@/assets/logo.png"
+import { useAuth } from "@/contexts/AuthContext"
 
 export function LoginPage() {
+  const { signIn } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const destino = (location.state as { from?: string } | null)?.from ?? "/"
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await signIn(email, password)
+      navigate(destino, { replace: true })
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível iniciar sessão."
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted px-6">
       <motion.div
@@ -21,16 +49,18 @@ export function LoginPage() {
           </p>
         </div>
 
-        <form className="mt-8 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-foreground">Email</span>
             <span className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
               <Mail className="size-4 text-muted-foreground" />
               <input
                 type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="nome@bancodebensdoados.pt"
                 className="w-full bg-transparent text-sm outline-none"
-                disabled
               />
             </span>
           </label>
@@ -43,21 +73,27 @@ export function LoginPage() {
               <Lock className="size-4 text-muted-foreground" />
               <input
                 type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full bg-transparent text-sm outline-none"
-                disabled
               />
             </span>
           </label>
 
           <button
-            type="button"
-            disabled
-            className="mt-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground opacity-60"
+            type="submit"
+            disabled={loading}
+            className="mt-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
           >
-            Entrar (autenticação real na Fase 3)
+            {loading ? "A entrar..." : "Entrar"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Acesso apenas para utilizadores registados pela administração.
+        </p>
       </motion.div>
     </main>
   )
