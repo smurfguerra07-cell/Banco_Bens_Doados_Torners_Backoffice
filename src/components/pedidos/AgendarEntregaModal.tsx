@@ -38,7 +38,7 @@ export function AgendarEntregaModal({
   const eventosPorDia = useMemo(() => {
     const mapa = new Map<string, number>()
     pedidos?.forEach((p) => {
-      if (p.data_entrega && p.id !== pedido?.id) {
+      if (p.data_entrega && p.estado !== "cancelado" && p.id !== pedido?.id) {
         mapa.set(p.data_entrega, (mapa.get(p.data_entrega) ?? 0) + 1)
       }
     })
