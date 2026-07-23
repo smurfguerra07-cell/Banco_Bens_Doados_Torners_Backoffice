@@ -62,7 +62,7 @@ export function Topbar() {
           <img src={logo} alt="Banco de Bens Doados" className="h-9 w-auto" />
         </Link>
 
-        <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
+        <nav className="flex flex-1 items-center justify-center gap-1 overflow-x-auto">
           {NAV_ITEMS.map((item) => {
             const ativo = location.pathname === item.to
             const Icon = item.icon
