@@ -8,6 +8,7 @@ export interface Profile {
   telefone: string | null
   avatar_url: string | null
   ativo: boolean
+  tema: "claro" | "escuro"
 }
 
 export const STAFF_ROLES: UserRole[] = ["administrador", "gestor", "operador", "leitor"]

@@ -10,6 +10,7 @@ import { PedidosPage } from "@/pages/PedidosPage"
 import { EmpresasPage } from "@/pages/EmpresasPage"
 import { UtilizadoresPage } from "@/pages/UtilizadoresPage"
 import { RelatoriosPage } from "@/pages/RelatoriosPage"
+import { SettingsPage } from "@/pages/SettingsPage"
 
 const queryClient = new QueryClient()
 
@@ -27,6 +28,7 @@ function App() {
               <Route path="/empresas" element={<EmpresasPage />} />
               <Route path="/utilizadores" element={<UtilizadoresPage />} />
               <Route path="/relatorios" element={<RelatoriosPage />} />
+              <Route path="/definicoes" element={<SettingsPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

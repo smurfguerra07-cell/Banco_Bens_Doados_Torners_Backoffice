@@ -54,7 +54,7 @@ export function UtilizadoresPage() {
         </button>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card">
+      <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
