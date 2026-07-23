@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
-import { atualizarEstadoPedido, fetchPedidos } from "@/services/pedidos"
+import { aprovarPedidoComEntrega, atualizarEstadoPedido, fetchPedidos } from "@/services/pedidos"
 import type { PedidoEstado } from "@/types/pedido"
 
 export function usePedidos() {
@@ -27,6 +27,21 @@ export function useAtualizarEstadoPedido() {
       queryClient.invalidateQueries({ queryKey: ["admin-pedidos"] })
       queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
       toast.success("Estado do pedido atualizado.")
+    },
+    onError: (err) => toast.error(err.message),
+  })
+}
+
+export function useAprovarPedidoComEntrega() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, dataEntrega }: { id: string; dataEntrega: string }) =>
+      aprovarPedidoComEntrega(id, dataEntrega),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-pedidos"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
+      toast.success("Pedido aprovado e entrega agendada.")
     },
     onError: (err) => toast.error(err.message),
   })

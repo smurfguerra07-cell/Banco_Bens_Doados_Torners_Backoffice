@@ -1,6 +1,8 @@
+import { useState } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
-import { Building2, Package, User, X } from "lucide-react"
+import { Building2, Download, Package, User, X } from "lucide-react"
+import toast from "react-hot-toast"
 import { useAtualizarEstadoPedido } from "@/hooks/usePedidos"
 import {
   PEDIDO_ESTADO_LABEL,
@@ -10,6 +12,8 @@ import {
 } from "@/types/pedido"
 import { cn } from "@/lib/utils"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
+import { AgendarEntregaModal } from "@/components/pedidos/AgendarEntregaModal"
+import { gerarGuiaEntregaPdf } from "@/lib/guiaEntrega"
 
 const ESTADO_BADGE: Record<PedidoEstado, string> = {
   recebido: "bg-muted text-muted-foreground",
@@ -49,13 +53,31 @@ export function PedidoDetailModal({
   onClose: () => void
 }) {
   const atualizarEstado = useAtualizarEstadoPedido()
+  const [aAgendar, setAAgendar] = useState(false)
+  const [aGerarGuia, setAGerarGuia] = useState(false)
   useBodyScrollLock(Boolean(pedido))
 
   function avancar() {
     if (!pedido) return
     const proximo = PROXIMO_ESTADO[pedido.estado]
     if (!proximo) return
+    if (proximo === "aprovado") {
+      setAAgendar(true)
+      return
+    }
     atualizarEstado.mutate({ id: pedido.id, estado: proximo }, { onSuccess: onClose })
+  }
+
+  async function descarregarGuia() {
+    if (!pedido?.data_entrega) return
+    setAGerarGuia(true)
+    try {
+      await gerarGuiaEntregaPdf(pedido, pedido.data_entrega)
+    } catch {
+      toast.error("Não foi possível gerar a guia.")
+    } finally {
+      setAGerarGuia(false)
+    }
   }
 
   function recusar() {
@@ -75,8 +97,9 @@ export function PedidoDetailModal({
   }
 
   return createPortal(
+    <>
     <AnimatePresence>
-      {pedido && (
+      {pedido && !aAgendar && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -156,15 +179,27 @@ export function PedidoDetailModal({
               )}
             </div>
 
-            {ESTADOS_ATIVOS.includes(pedido.estado) && (
+            {(pedido.data_entrega || ESTADOS_ATIVOS.includes(pedido.estado)) && (
               <div className="flex flex-wrap gap-2 border-t border-border px-6 py-4">
-                <button
-                  onClick={avancar}
-                  disabled={atualizarEstado.isPending}
-                  className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
-                >
-                  {AVANCAR_LABEL[pedido.estado]}
-                </button>
+                {pedido.data_entrega && (
+                  <button
+                    onClick={descarregarGuia}
+                    disabled={aGerarGuia}
+                    className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
+                  >
+                    <Download className="size-3.5" />
+                    {aGerarGuia ? "A gerar..." : "Guia de entrega"}
+                  </button>
+                )}
+                {ESTADOS_ATIVOS.includes(pedido.estado) && (
+                  <button
+                    onClick={avancar}
+                    disabled={atualizarEstado.isPending}
+                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                  >
+                    {AVANCAR_LABEL[pedido.estado]}
+                  </button>
+                )}
                 {(pedido.estado === "recebido" || pedido.estado === "em_analise") && (
                   <button
                     onClick={recusar}
@@ -174,19 +209,29 @@ export function PedidoDetailModal({
                     Recusar
                   </button>
                 )}
-                <button
-                  onClick={cancelar}
-                  disabled={atualizarEstado.isPending}
-                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted"
-                >
-                  Cancelar
-                </button>
+                {ESTADOS_ATIVOS.includes(pedido.estado) && (
+                  <button
+                    onClick={cancelar}
+                    disabled={atualizarEstado.isPending}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted"
+                  >
+                    Cancelar
+                  </button>
+                )}
               </div>
             )}
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>,
+    </AnimatePresence>
+    <AgendarEntregaModal
+      pedido={aAgendar ? pedido : null}
+      onClose={() => {
+        setAAgendar(false)
+        onClose()
+      }}
+    />
+    </>,
     document.body
   )
 }

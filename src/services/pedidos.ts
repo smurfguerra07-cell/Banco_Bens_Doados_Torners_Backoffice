@@ -3,8 +3,8 @@ import type { Pedido, PedidoEstado } from "@/types/pedido"
 
 const SELECT_COMPLETO = `
   *,
-  empresas ( nome ),
-  profiles!pedidos_solicitante_id_fkey ( full_name ),
+  empresas ( nome, morada, codigo_postal, cidade, telefone ),
+  profiles!pedidos_solicitante_id_fkey ( full_name, telefone ),
   pedido_itens (
     id,
     toner_id,
@@ -34,6 +34,15 @@ export async function atualizarEstadoPedido(
       estado,
       motivo_recusa: estado === "recusado" ? motivoRecusa ?? null : null,
     })
+    .eq("id", id)
+
+  if (error) throw error
+}
+
+export async function aprovarPedidoComEntrega(id: string, dataEntrega: string) {
+  const { error } = await supabase
+    .from("pedidos")
+    .update({ estado: "aprovado", data_entrega: dataEntrega, motivo_recusa: null })
     .eq("id", id)
 
   if (error) throw error

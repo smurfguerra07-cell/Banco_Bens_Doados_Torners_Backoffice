@@ -46,10 +46,17 @@ export interface Pedido {
   estado: PedidoEstado
   observacoes: string | null
   motivo_recusa: string | null
+  data_entrega: string | null
   created_at: string
   aprovado_em: string | null
   concluido_em: string | null
-  empresas: { nome: string } | null
-  profiles: { full_name: string } | null
+  empresas: {
+    nome: string
+    morada: string | null
+    codigo_postal: string | null
+    cidade: string | null
+    telefone: string | null
+  } | null
+  profiles: { full_name: string; telefone: string | null } | null
   pedido_itens: PedidoItem[]
 }

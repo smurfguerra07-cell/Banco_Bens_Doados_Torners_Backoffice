@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { Building2, Package, Search, User } from "lucide-react"
+import { Building2, Download, Package, Search, User } from "lucide-react"
+import toast from "react-hot-toast"
 import { usePedidos, useAtualizarEstadoPedido } from "@/hooks/usePedidos"
 import {
   PEDIDO_ESTADO_LABEL,
@@ -8,6 +9,8 @@ import {
   type PedidoEstado,
 } from "@/types/pedido"
 import { cn } from "@/lib/utils"
+import { AgendarEntregaModal } from "@/components/pedidos/AgendarEntregaModal"
+import { gerarGuiaEntregaPdf } from "@/lib/guiaEntrega"
 
 const ESTADO_BADGE: Record<PedidoEstado, string> = {
   recebido: "bg-muted text-muted-foreground",
@@ -56,6 +59,8 @@ export function PedidosPage() {
   const atualizarEstado = useAtualizarEstadoPedido()
   const [filtro, setFiltro] = useState<PedidoEstado | "todos">("todos")
   const [pesquisa, setPesquisa] = useState("")
+  const [pedidoParaAgendar, setPedidoParaAgendar] = useState<Pedido | null>(null)
+  const [aGerarGuia, setAGerarGuia] = useState<string | null>(null)
 
   const filtrados = useMemo(() => {
     if (!pedidos) return []
@@ -82,7 +87,23 @@ export function PedidosPage() {
   function avancar(pedido: Pedido) {
     const proximo = PROXIMO_ESTADO[pedido.estado]
     if (!proximo) return
+    if (proximo === "aprovado") {
+      setPedidoParaAgendar(pedido)
+      return
+    }
     atualizarEstado.mutate({ id: pedido.id, estado: proximo })
+  }
+
+  async function descarregarGuia(pedido: Pedido) {
+    if (!pedido.data_entrega) return
+    setAGerarGuia(pedido.id)
+    try {
+      await gerarGuiaEntregaPdf(pedido, pedido.data_entrega)
+    } catch {
+      toast.error("Não foi possível gerar a guia.")
+    } finally {
+      setAGerarGuia(null)
+    }
   }
 
   function recusar(pedido: Pedido) {
@@ -180,33 +201,45 @@ export function PedidosPage() {
                 </div>
               </div>
 
-              {ESTADOS_ATIVOS.includes(pedido.estado) && (
-                <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
+                {pedido.data_entrega && (
                   <button
-                    onClick={() => avancar(pedido)}
-                    disabled={atualizarEstado.isPending}
-                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                    onClick={() => descarregarGuia(pedido)}
+                    disabled={aGerarGuia === pedido.id}
+                    className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
                   >
-                    {AVANCAR_LABEL[pedido.estado]}
+                    <Download className="size-3.5" />
+                    {aGerarGuia === pedido.id ? "A gerar..." : "Guia de entrega"}
                   </button>
-                  {(pedido.estado === "recebido" || pedido.estado === "em_analise") && (
+                )}
+                {ESTADOS_ATIVOS.includes(pedido.estado) && (
+                  <>
                     <button
-                      onClick={() => recusar(pedido)}
+                      onClick={() => avancar(pedido)}
                       disabled={atualizarEstado.isPending}
-                      className="rounded-lg border border-secondary/30 px-3 py-1.5 text-xs font-medium text-secondary transition hover:bg-secondary/10"
+                      className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
                     >
-                      Recusar
+                      {AVANCAR_LABEL[pedido.estado]}
                     </button>
-                  )}
-                  <button
-                    onClick={() => cancelar(pedido)}
-                    disabled={atualizarEstado.isPending}
-                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
+                    {(pedido.estado === "recebido" || pedido.estado === "em_analise") && (
+                      <button
+                        onClick={() => recusar(pedido)}
+                        disabled={atualizarEstado.isPending}
+                        className="rounded-lg border border-secondary/30 px-3 py-1.5 text-xs font-medium text-secondary transition hover:bg-secondary/10"
+                      >
+                        Recusar
+                      </button>
+                    )}
+                    <button
+                      onClick={() => cancelar(pedido)}
+                      disabled={atualizarEstado.isPending}
+                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted"
+                    >
+                      Cancelar
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             <ul className="mt-4 flex flex-col gap-1.5 border-t border-border pt-3">
@@ -240,6 +273,11 @@ export function PedidosPage() {
           </div>
         ))}
       </div>
+
+      <AgendarEntregaModal
+        pedido={pedidoParaAgendar}
+        onClose={() => setPedidoParaAgendar(null)}
+      />
     </div>
   )
 }
