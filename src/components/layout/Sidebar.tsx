@@ -24,9 +24,9 @@ export function Sidebar() {
   const location = useLocation()
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-border bg-card">
-      <div className="flex items-center px-5 py-5">
-        <img src={logo} alt="Banco de Bens Doados" className="h-8 w-auto" />
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border bg-card">
+      <div className="flex items-center px-5 py-6">
+        <img src={logo} alt="Banco de Bens Doados" className="h-12 w-auto" />
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 px-3">
