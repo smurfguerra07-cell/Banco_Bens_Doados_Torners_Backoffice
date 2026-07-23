@@ -9,6 +9,7 @@ import {
   FileBarChart,
   LayoutDashboard,
   LogOut,
+  MessageCircle,
   Package,
   Settings,
   Users,
@@ -17,12 +18,14 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/AuthContext"
 import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
+import { useTickets } from "@/hooks/useTickets"
 import logo from "@/assets/logo.png"
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/toners", label: "Toners", icon: Package },
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
+  { to: "/tickets", label: "Tickets", icon: MessageCircle },
   { to: "/utilizadores", label: "Utilizadores", icon: Users },
   { to: "/relatorios", label: "Relatórios", icon: FileBarChart },
 ]
@@ -35,6 +38,7 @@ export function Topbar() {
   const { profile, signOut } = useAuth()
   const { data: toners } = useToners()
   const { data: pedidos } = usePedidos()
+  const { data: tickets } = useTickets()
   const [menuAberto, setMenuAberto] = useState(false)
   const [notifAberta, setNotifAberta] = useState(false)
 
@@ -44,7 +48,8 @@ export function Topbar() {
     toners?.filter(
       (t) => t.ativo && t.quantidade - t.quantidade_reservada <= LIMITE_STOCK_BAIXO
     ) ?? []
-  const totalNotificacoes = pedidosPendentes.length + stockBaixo.length
+  const ticketsPorResponder = tickets?.filter((t) => t.estado === "aberto") ?? []
+  const totalNotificacoes = pedidosPendentes.length + stockBaixo.length + ticketsPorResponder.length
 
   async function handleSair() {
     setMenuAberto(false)
@@ -156,6 +161,26 @@ export function Topbar() {
                           <br />
                           <span className="text-xs text-muted-foreground">
                             {LIMITE_STOCK_BAIXO} unidades ou menos disponíveis
+                          </span>
+                        </span>
+                      </Link>
+                    )}
+                    {ticketsPorResponder.length > 0 && (
+                      <Link
+                        to="/tickets"
+                        onClick={() => setNotifAberta(false)}
+                        className="flex items-start gap-2.5 px-4 py-2.5 text-sm transition hover:bg-muted"
+                      >
+                        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <MessageCircle className="size-3.5" />
+                        </span>
+                        <span>
+                          <span className="font-medium text-foreground">
+                            {ticketsPorResponder.length} ticket(s) por responder
+                          </span>
+                          <br />
+                          <span className="text-xs text-muted-foreground">
+                            À espera de resposta da equipa
                           </span>
                         </span>
                       </Link>

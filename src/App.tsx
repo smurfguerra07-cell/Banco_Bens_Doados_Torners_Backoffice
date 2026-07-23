@@ -8,6 +8,7 @@ import { DashboardPage } from "@/pages/DashboardPage"
 import { ToniersPage } from "@/pages/ToniersPage"
 import { PedidosPage } from "@/pages/PedidosPage"
 import { EmpresasPage } from "@/pages/EmpresasPage"
+import { TicketsPage } from "@/pages/TicketsPage"
 import { UtilizadoresPage } from "@/pages/UtilizadoresPage"
 import { RelatoriosPage } from "@/pages/RelatoriosPage"
 import { SettingsPage } from "@/pages/SettingsPage"
@@ -25,6 +26,7 @@ function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/toners" element={<ToniersPage />} />
               <Route path="/pedidos" element={<PedidosPage />} />
+              <Route path="/tickets" element={<TicketsPage />} />
               <Route path="/empresas" element={<EmpresasPage />} />
               <Route path="/utilizadores" element={<UtilizadoresPage />} />
               <Route path="/relatorios" element={<RelatoriosPage />} />
