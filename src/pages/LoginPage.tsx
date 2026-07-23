@@ -40,7 +40,7 @@ export function LoginPage() {
         className="w-full max-w-sm rounded-xl border border-border bg-card p-8 shadow-sm"
       >
         <div className="flex flex-col items-center gap-2 text-center">
-          <img src={logo} alt="Banco de Bens Doados" className="h-20 w-auto" />
+          <img src={logo} alt="Banco de Bens Doados" className="h-24 w-auto" />
           <h1 className="mt-2 text-xl font-semibold text-foreground">
             BackOffice
           </h1>

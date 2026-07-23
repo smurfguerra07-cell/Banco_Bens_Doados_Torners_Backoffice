@@ -59,7 +59,7 @@ export function Topbar() {
     <header className="sticky top-0 z-30 border-b border-border bg-card shadow-sm">
       <div className="flex items-center gap-6 px-6 py-3">
         <Link to="/" className="flex shrink-0 items-center">
-          <img src={logo} alt="Banco de Bens Doados" className="h-9 w-auto" />
+          <img src={logo} alt="Banco de Bens Doados" className="h-12 w-auto" />
         </Link>
 
         <nav className="flex flex-1 items-center justify-center gap-1 overflow-x-auto">
