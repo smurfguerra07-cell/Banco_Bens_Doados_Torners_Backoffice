@@ -1,5 +1,6 @@
 import { motion } from "framer-motion"
-import { Lock, Mail, ShieldCheck } from "lucide-react"
+import { Lock, Mail } from "lucide-react"
+import logo from "@/assets/logo.png"
 
 export function LoginPage() {
   return (
@@ -11,10 +12,8 @@ export function LoginPage() {
         className="w-full max-w-sm rounded-xl border border-border bg-card p-8 shadow-sm"
       >
         <div className="flex flex-col items-center gap-2 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <ShieldCheck className="size-6" />
-          </span>
-          <h1 className="text-xl font-semibold text-foreground">
+          <img src={logo} alt="Banco de Bens Doados" className="h-10 w-auto" />
+          <h1 className="mt-2 text-xl font-semibold text-foreground">
             BackOffice
           </h1>
           <p className="text-sm text-muted-foreground">
