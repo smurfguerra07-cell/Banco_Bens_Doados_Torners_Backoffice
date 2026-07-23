@@ -59,7 +59,7 @@ export function PedidosPage() {
 
   const filtrados = useMemo(() => {
     if (!pedidos) return []
-    const termo = pesquisa.trim().toLowerCase()
+    const termo = pesquisa.trim().toLowerCase().replace(/^#/, "")
 
     return pedidos.filter((p) => {
       if (filtro !== "todos" && p.estado !== filtro) return false
