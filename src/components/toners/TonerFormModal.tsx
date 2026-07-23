@@ -2,6 +2,7 @@ import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "r
 import { AnimatePresence, motion } from "framer-motion"
 import { ImagePlus, Package, X } from "lucide-react"
 import type { Toner, TonerEstado, TonerInput } from "@/types/toner"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 const ESTADOS: TonerEstado[] = ["novo", "usado", "reconstruido"]
 
@@ -36,6 +37,7 @@ export function TonerFormModal({
   const [imagem, setImagem] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const inputFileRef = useRef<HTMLInputElement>(null)
+  useBodyScrollLock(aberto)
 
   useEffect(() => {
     if (toner) {

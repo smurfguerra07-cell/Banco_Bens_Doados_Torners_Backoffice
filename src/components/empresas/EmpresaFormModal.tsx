@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { X } from "lucide-react"
 import type { Empresa, EmpresaInput, EmpresaTipo } from "@/types/empresa"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 const TIPOS: EmpresaTipo[] = ["doadora", "beneficiaria", "ambas"]
 
@@ -32,6 +33,7 @@ export function EmpresaFormModal({
   onSubmit: (input: EmpresaInput) => void
 }) {
   const [form, setForm] = useState<EmpresaInput>(VAZIO)
+  useBodyScrollLock(aberto)
 
   useEffect(() => {
     if (empresa) {

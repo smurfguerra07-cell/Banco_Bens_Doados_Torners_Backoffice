@@ -9,6 +9,7 @@ import {
   type UserRole,
   type UtilizadorInput,
 } from "@/types/profile"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 const VAZIO_EDICAO: UtilizadorInput = {
   full_name: "",
@@ -43,6 +44,7 @@ export function UtilizadorFormModal({
 }) {
   const [formEdicao, setFormEdicao] = useState<UtilizadorInput>(VAZIO_EDICAO)
   const [formCriacao, setFormCriacao] = useState<CriarUtilizadorInput>(VAZIO_CRIACAO)
+  useBodyScrollLock(aberto)
 
   useEffect(() => {
     if (utilizador) {

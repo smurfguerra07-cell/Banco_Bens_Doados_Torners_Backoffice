@@ -9,6 +9,7 @@ import {
   type PedidoEstado,
 } from "@/types/pedido"
 import { cn } from "@/lib/utils"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 const ESTADO_BADGE: Record<PedidoEstado, string> = {
   recebido: "bg-muted text-muted-foreground",
@@ -48,6 +49,7 @@ export function PedidoDetailModal({
   onClose: () => void
 }) {
   const atualizarEstado = useAtualizarEstadoPedido()
+  useBodyScrollLock(Boolean(pedido))
 
   function avancar() {
     if (!pedido) return
