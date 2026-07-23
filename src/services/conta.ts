@@ -20,3 +20,15 @@ export async function alterarPassword(novaPassword: string) {
   const { error } = await supabase.auth.updateUser({ password: novaPassword })
   if (error) throw error
 }
+
+export async function concluirTrocaObrigatoriaPassword(
+  userId: string,
+  novaPassword: string
+) {
+  await alterarPassword(novaPassword)
+  const { error } = await supabase
+    .from("profiles")
+    .update({ deve_alterar_password: false })
+    .eq("id", userId)
+  if (error) throw error
+}

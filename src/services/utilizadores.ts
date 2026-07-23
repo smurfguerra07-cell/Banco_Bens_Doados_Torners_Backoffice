@@ -1,5 +1,10 @@
 import { supabase } from "@/lib/supabase"
-import { STAFF_ROLES, type Profile, type UtilizadorInput } from "@/types/profile"
+import {
+  STAFF_ROLES,
+  type CriarUtilizadorInput,
+  type Profile,
+  type UtilizadorInput,
+} from "@/types/profile"
 
 export async function fetchUtilizadores(): Promise<Profile[]> {
   const { data, error } = await supabase
@@ -12,22 +17,17 @@ export async function fetchUtilizadores(): Promise<Profile[]> {
 }
 
 /**
- * Cria o perfil de staff para um utilizador que já tem login criado no
- * Supabase Authentication (Dashboard → Authentication → Users). Não é
- * possível criar a conta de login diretamente daqui — precisa da chave
- * de administrador, que nunca deve estar no frontend.
+ * Cria o login (email + password, sem confirmação por email) e o
+ * perfil de staff numa só chamada, via Edge Function (usa a chave de
+ * administrador do lado do servidor — nunca no browser).
  */
-export async function criarPerfilUtilizador(
-  authUserId: string,
-  input: UtilizadorInput
-) {
-  const { data, error } = await supabase
-    .from("profiles")
-    .insert({ id: authUserId, ...input })
-    .select()
-    .single()
+export async function criarUtilizador(input: CriarUtilizadorInput) {
+  const { data, error } = await supabase.functions.invoke("criar-utilizador", {
+    body: input,
+  })
   if (error) throw error
-  return data as Profile
+  if (data?.error) throw new Error(data.error)
+  return data as { id: string }
 }
 
 export async function atualizarUtilizador(id: string, input: UtilizadorInput) {

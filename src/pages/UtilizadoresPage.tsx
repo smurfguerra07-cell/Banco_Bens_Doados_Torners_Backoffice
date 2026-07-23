@@ -2,7 +2,12 @@ import { useState } from "react"
 import { Pencil, Plus, User } from "lucide-react"
 import { useUtilizadores, useUtilizadorMutations } from "@/hooks/useUtilizadores"
 import { UtilizadorFormModal } from "@/components/utilizadores/UtilizadorFormModal"
-import { ROLE_LABEL, type Profile, type UtilizadorInput } from "@/types/profile"
+import {
+  ROLE_LABEL,
+  type CriarUtilizadorInput,
+  type Profile,
+  type UtilizadorInput,
+} from "@/types/profile"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 
@@ -23,15 +28,12 @@ export function UtilizadoresPage() {
     setModalAberto(true)
   }
 
-  function handleSubmit(uid: string | null, input: UtilizadorInput) {
-    if (uid) {
-      criar.mutate({ uid, input }, { onSuccess: () => setModalAberto(false) })
-    } else if (utilizadorEditar) {
-      atualizar.mutate(
-        { id: utilizadorEditar.id, input },
-        { onSuccess: () => setModalAberto(false) }
-      )
-    }
+  function handleSubmitCriar(input: CriarUtilizadorInput) {
+    criar.mutate(input, { onSuccess: () => setModalAberto(false) })
+  }
+
+  function handleSubmitEditar(id: string, input: UtilizadorInput) {
+    atualizar.mutate({ id, input }, { onSuccess: () => setModalAberto(false) })
   }
 
   return (
@@ -139,7 +141,8 @@ export function UtilizadoresPage() {
         aberto={modalAberto}
         aGuardar={criar.isPending || atualizar.isPending}
         onClose={() => setModalAberto(false)}
-        onSubmit={handleSubmit}
+        onSubmitCriar={handleSubmitCriar}
+        onSubmitEditar={handleSubmitEditar}
       />
     </div>
   )

@@ -9,6 +9,7 @@ export interface Profile {
   avatar_url: string | null
   ativo: boolean
   tema: "claro" | "escuro"
+  deve_alterar_password: boolean
 }
 
 export const STAFF_ROLES: UserRole[] = ["administrador", "gestor", "operador", "leitor"]
@@ -26,4 +27,13 @@ export interface UtilizadorInput {
   telefone: string | null
   role: UserRole
   ativo: boolean
+}
+
+export interface CriarUtilizadorInput {
+  email: string
+  password: string
+  full_name: string
+  telefone: string | null
+  role: UserRole
+  deve_alterar_password: boolean
 }

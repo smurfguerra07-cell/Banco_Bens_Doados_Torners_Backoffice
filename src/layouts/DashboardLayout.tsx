@@ -1,9 +1,10 @@
 import { Navigate, Outlet } from "react-router"
 import { useAuth } from "@/contexts/AuthContext"
 import { Topbar } from "@/components/layout/Topbar"
+import { TrocarPasswordObrigatoria } from "@/components/conta/TrocarPasswordObrigatoria"
 
 export function DashboardLayout() {
-  const { user, loading } = useAuth()
+  const { user, profile, loading } = useAuth()
 
   if (loading) {
     return (
@@ -15,6 +16,10 @@ export function DashboardLayout() {
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  if (profile?.deve_alterar_password) {
+    return <TrocarPasswordObrigatoria />
   }
 
   return (

@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 import {
   atualizarUtilizador,
-  criarPerfilUtilizador,
+  criarUtilizador,
   fetchUtilizadores,
 } from "@/services/utilizadores"
-import type { UtilizadorInput } from "@/types/profile"
+import type { CriarUtilizadorInput, UtilizadorInput } from "@/types/profile"
 
 export function useUtilizadores() {
   return useQuery({
@@ -20,11 +20,10 @@ export function useUtilizadorMutations() {
     queryClient.invalidateQueries({ queryKey: ["admin-utilizadores"] })
 
   const criar = useMutation({
-    mutationFn: ({ uid, input }: { uid: string; input: UtilizadorInput }) =>
-      criarPerfilUtilizador(uid, input),
+    mutationFn: (input: CriarUtilizadorInput) => criarUtilizador(input),
     onSuccess: () => {
       invalidate()
-      toast.success("Utilizador adicionado.")
+      toast.success("Utilizador criado.")
     },
     onError: (err) => toast.error(err.message),
   })

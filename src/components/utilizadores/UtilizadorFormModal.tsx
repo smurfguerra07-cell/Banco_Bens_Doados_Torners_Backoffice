@@ -1,13 +1,29 @@
 import { type FormEvent, useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { X } from "lucide-react"
-import { STAFF_ROLES, ROLE_LABEL, type Profile, type UserRole, type UtilizadorInput } from "@/types/profile"
+import {
+  STAFF_ROLES,
+  ROLE_LABEL,
+  type CriarUtilizadorInput,
+  type Profile,
+  type UserRole,
+  type UtilizadorInput,
+} from "@/types/profile"
 
-const VAZIO: UtilizadorInput = {
+const VAZIO_EDICAO: UtilizadorInput = {
   full_name: "",
   telefone: "",
   role: "leitor",
   ativo: true,
+}
+
+const VAZIO_CRIACAO: CriarUtilizadorInput = {
+  email: "",
+  password: "",
+  full_name: "",
+  telefone: "",
+  role: "leitor",
+  deve_alterar_password: true,
 }
 
 export function UtilizadorFormModal({
@@ -15,35 +31,39 @@ export function UtilizadorFormModal({
   aberto,
   aGuardar,
   onClose,
-  onSubmit,
+  onSubmitCriar,
+  onSubmitEditar,
 }: {
   utilizador: Profile | null
   aberto: boolean
   aGuardar: boolean
   onClose: () => void
-  onSubmit: (uid: string | null, input: UtilizadorInput) => void
+  onSubmitCriar: (input: CriarUtilizadorInput) => void
+  onSubmitEditar: (id: string, input: UtilizadorInput) => void
 }) {
-  const [uid, setUid] = useState("")
-  const [form, setForm] = useState<UtilizadorInput>(VAZIO)
+  const [formEdicao, setFormEdicao] = useState<UtilizadorInput>(VAZIO_EDICAO)
+  const [formCriacao, setFormCriacao] = useState<CriarUtilizadorInput>(VAZIO_CRIACAO)
 
   useEffect(() => {
     if (utilizador) {
-      setUid(utilizador.id)
-      setForm({
+      setFormEdicao({
         full_name: utilizador.full_name,
         telefone: utilizador.telefone ?? "",
         role: utilizador.role,
         ativo: utilizador.ativo,
       })
     } else {
-      setUid("")
-      setForm(VAZIO)
+      setFormCriacao(VAZIO_CRIACAO)
     }
   }, [utilizador, aberto])
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    onSubmit(utilizador ? null : uid, form)
+    if (utilizador) {
+      onSubmitEditar(utilizador.id, formEdicao)
+    } else {
+      onSubmitCriar(formCriacao)
+    }
   }
 
   return (
@@ -77,93 +97,166 @@ export function UtilizadorFormModal({
               {utilizador ? "Editar utilizador" : "Novo utilizador"}
             </h2>
 
-            {!utilizador && (
-              <p className="mt-2 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-700">
-                Cria primeiro o login em <strong>Supabase → Authentication → Users
-                → Add user</strong>, copia o UID gerado e cola-o abaixo.
-              </p>
-            )}
-
-            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
-              {!utilizador && (
+            {utilizador ? (
+              <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
                 <label className="flex flex-col gap-1.5 text-sm">
-                  <span className="font-medium text-foreground">
-                    UID do utilizador (Supabase Auth)
-                  </span>
+                  <span className="font-medium text-foreground">Nome</span>
                   <input
                     required
-                    value={uid}
-                    onChange={(e) => setUid(e.target.value)}
-                    placeholder="ex: 868b4d37-7da9-4011-ba8a-433752388d52"
-                    className="rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none"
+                    value={formEdicao.full_name}
+                    onChange={(e) =>
+                      setFormEdicao((f) => ({ ...f, full_name: e.target.value }))
+                    }
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
                   />
                 </label>
-              )}
 
-              <label className="flex flex-col gap-1.5 text-sm">
-                <span className="font-medium text-foreground">Nome</span>
-                <input
-                  required
-                  value={form.full_name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, full_name: e.target.value }))
-                  }
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
-                />
-              </label>
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">Telefone</span>
+                  <input
+                    value={formEdicao.telefone ?? ""}
+                    onChange={(e) =>
+                      setFormEdicao((f) => ({ ...f, telefone: e.target.value }))
+                    }
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  />
+                </label>
 
-              <label className="flex flex-col gap-1.5 text-sm">
-                <span className="font-medium text-foreground">Telefone</span>
-                <input
-                  value={form.telefone ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, telefone: e.target.value }))
-                  }
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
-                />
-              </label>
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">Perfil</span>
+                  <select
+                    value={formEdicao.role}
+                    onChange={(e) =>
+                      setFormEdicao((f) => ({ ...f, role: e.target.value as UserRole }))
+                    }
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  >
+                    {STAFF_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {ROLE_LABEL[role]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <label className="flex flex-col gap-1.5 text-sm">
-                <span className="font-medium text-foreground">Perfil</span>
-                <select
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, role: e.target.value as UserRole }))
-                  }
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={formEdicao.ativo}
+                    onChange={(e) =>
+                      setFormEdicao((f) => ({ ...f, ativo: e.target.checked }))
+                    }
+                    className="size-4 rounded border-border"
+                  />
+                  <span className="text-foreground">Conta ativa</span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={aGuardar}
+                  className="mt-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
                 >
-                  {STAFF_ROLES.map((role) => (
-                    <option key={role} value={role}>
-                      {ROLE_LABEL[role]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  {aGuardar ? "A guardar..." : "Guardar alterações"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">Nome</span>
+                  <input
+                    required
+                    value={formCriacao.full_name}
+                    onChange={(e) =>
+                      setFormCriacao((f) => ({ ...f, full_name: e.target.value }))
+                    }
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  />
+                </label>
 
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.ativo}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, ativo: e.target.checked }))
-                  }
-                  className="size-4 rounded border-border"
-                />
-                <span className="text-foreground">Conta ativa</span>
-              </label>
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">Email</span>
+                  <input
+                    type="email"
+                    required
+                    value={formCriacao.email}
+                    onChange={(e) =>
+                      setFormCriacao((f) => ({ ...f, email: e.target.value }))
+                    }
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  />
+                </label>
 
-              <button
-                type="submit"
-                disabled={aGuardar}
-                className="mt-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
-              >
-                {aGuardar
-                  ? "A guardar..."
-                  : utilizador
-                    ? "Guardar alterações"
-                    : "Adicionar utilizador"}
-              </button>
-            </form>
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">
+                    Palavra-passe inicial
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    minLength={6}
+                    value={formCriacao.password}
+                    onChange={(e) =>
+                      setFormCriacao((f) => ({ ...f, password: e.target.value }))
+                    }
+                    placeholder="Mínimo 6 caracteres"
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">Telefone</span>
+                  <input
+                    value={formCriacao.telefone ?? ""}
+                    onChange={(e) =>
+                      setFormCriacao((f) => ({ ...f, telefone: e.target.value }))
+                    }
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">Perfil</span>
+                  <select
+                    value={formCriacao.role}
+                    onChange={(e) =>
+                      setFormCriacao((f) => ({ ...f, role: e.target.value as UserRole }))
+                    }
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  >
+                    {STAFF_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {ROLE_LABEL[role]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={formCriacao.deve_alterar_password}
+                    onChange={(e) =>
+                      setFormCriacao((f) => ({
+                        ...f,
+                        deve_alterar_password: e.target.checked,
+                      }))
+                    }
+                    className="size-4 rounded border-border"
+                  />
+                  <span className="text-foreground">
+                    Pedir para trocar a palavra-passe no primeiro login
+                  </span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={aGuardar}
+                  className="mt-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                >
+                  {aGuardar ? "A criar..." : "Criar utilizador"}
+                </button>
+              </form>
+            )}
           </motion.div>
         </motion.div>
       )}
