@@ -15,6 +15,28 @@ values
   ('Xerox', '106R02773', '106R02773', array['Xerox Phaser 3020', 'Xerox WorkCentre 3025'], 5, 0, 'novo', 'Armazém Porto', 'Toner Laser', null)
 on conflict (referencia) do nothing;
 
--- Sem imagens de exemplo propositadamente: o catálogo mostra um placeholder
--- (ícone com a cor institucional) enquanto não houver fotografias reais.
--- O upload de fotos reais fica disponível na gestão de toners do BackOffice.
+-- Fotografias reais de tinteiros/toners (Wikimedia Commons, licença livre).
+-- Créditos obrigatórios (CC BY-SA):
+--   HP 117A, Xerox Phaser 6600, Kyocera TK-550 — © Raimond Spekking / CC BY-SA 4.0
+--   Samsung (front/side view) — © W.carter / CC BY-SA 4.0
+--   Toner Cartridge (genérico) — CC BY-SA 4.0
+--   Brother TN — © OnlineXpress / CC BY-SA 3.0
+--   Tonerkassette HP — domínio público
+-- Substituir por fotografias reais dos vossos toners quando o upload para o
+-- Storage estiver disponível na gestão de toners do BackOffice.
+insert into public.toner_imagens (toner_id, storage_path, ordem)
+select t.id, v.url, 0
+from public.toners t
+join (values
+  ('CE505A', 'https://upload.wikimedia.org/wikipedia/commons/0/00/HP_117A_-_black_laser_toner_cartridge-2407.jpg'),
+  ('CE285A', 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Tonerkassette_Laserdrucker_HP.jpg'),
+  ('728', 'https://upload.wikimedia.org/wikipedia/commons/d/d9/Toner_Cartridge.jpg'),
+  ('731', 'https://upload.wikimedia.org/wikipedia/commons/b/bd/Kyocera_FS-C5200DN_-_Toner_cartridges_TK-550_in_black%2C_yellow%2C_cyan%2C_and_magenta-3574.jpg'),
+  ('TN2220', 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Toner-laser-grande-capacite-noir-brother-capacite-2600-pages.jpg'),
+  ('C13S050473', 'https://upload.wikimedia.org/wikipedia/commons/3/37/Samsung_laser_toner_cartridge_side_view.jpg'),
+  ('MLT-D111S', 'https://upload.wikimedia.org/wikipedia/commons/b/b9/Samsung_laser_toner_cartridge_front_view.jpg'),
+  ('106R02773', 'https://upload.wikimedia.org/wikipedia/commons/5/50/Xerox_Phaser_6600_toner_cartridge_in_magenta-7639.jpg')
+) as v(referencia, url) on v.referencia = t.referencia
+where not exists (
+  select 1 from public.toner_imagens where toner_id = t.id
+);
