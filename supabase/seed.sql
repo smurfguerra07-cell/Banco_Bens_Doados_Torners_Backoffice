@@ -15,22 +15,6 @@ values
   ('Xerox', '106R02773', '106R02773', array['Xerox Phaser 3020', 'Xerox WorkCentre 3025'], 5, 0, 'novo', 'Armazém Porto', 'Toner Laser', null)
 on conflict (referencia) do nothing;
 
--- Imagens de exemplo (placeholders coloridos com a paleta institucional,
--- via placehold.co) — substituir por fotografias reais quando o upload
--- para o Storage estiver disponível na gestão de toners do BackOffice.
-insert into public.toner_imagens (toner_id, storage_path, ordem)
-select t.id, v.url, 0
-from public.toners t
-join (values
-  ('CE505A', 'https://placehold.co/600x600/1e4b8f/ffffff?text=HP+CE505A'),
-  ('CE285A', 'https://placehold.co/600x600/1e4b8f/ffffff?text=HP+CE285A'),
-  ('728', 'https://placehold.co/600x600/c8102e/ffffff?text=Canon+728'),
-  ('731', 'https://placehold.co/600x600/c8102e/ffffff?text=Canon+731'),
-  ('TN2220', 'https://placehold.co/600x600/1e4b8f/ffffff?text=Brother+TN2220'),
-  ('C13S050473', 'https://placehold.co/600x600/1e4b8f/ffffff?text=Epson+C13S050473'),
-  ('MLT-D111S', 'https://placehold.co/600x600/1e4b8f/ffffff?text=Samsung+MLT-D111S'),
-  ('106R02773', 'https://placehold.co/600x600/1e4b8f/ffffff?text=Xerox+106R02773')
-) as v(referencia, url) on v.referencia = t.referencia
-where not exists (
-  select 1 from public.toner_imagens where toner_id = t.id
-);
+-- Sem imagens de exemplo propositadamente: o catálogo mostra um placeholder
+-- (ícone com a cor institucional) enquanto não houver fotografias reais.
+-- O upload de fotos reais fica disponível na gestão de toners do BackOffice.
