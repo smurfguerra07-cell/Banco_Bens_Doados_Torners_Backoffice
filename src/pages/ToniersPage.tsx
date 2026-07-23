@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 
 export function ToniersPage() {
   const { data: toners, isLoading } = useToners()
-  const { criar, atualizar, alternarAtivo, eliminar } = useTonerMutations()
+  const { guardar, alternarAtivo, eliminar } = useTonerMutations()
   const [pesquisa, setPesquisa] = useState("")
   const [modalAberto, setModalAberto] = useState(false)
   const [tonerEditar, setTonerEditar] = useState<Toner | null>(null)
@@ -33,15 +33,11 @@ export function ToniersPage() {
     setModalAberto(true)
   }
 
-  function handleSubmit(input: TonerInput) {
-    if (tonerEditar) {
-      atualizar.mutate(
-        { id: tonerEditar.id, input },
-        { onSuccess: () => setModalAberto(false) }
-      )
-    } else {
-      criar.mutate(input, { onSuccess: () => setModalAberto(false) })
-    }
+  function handleSubmit(input: TonerInput, imagem: File | null) {
+    guardar.mutate(
+      { id: tonerEditar?.id, input, imagem },
+      { onSuccess: () => setModalAberto(false) }
+    )
   }
 
   function handleEliminar(toner: Toner) {
@@ -186,7 +182,7 @@ export function ToniersPage() {
       <TonerFormModal
         toner={tonerEditar}
         aberto={modalAberto}
-        aGuardar={criar.isPending || atualizar.isPending}
+        aGuardar={guardar.isPending}
         onClose={() => setModalAberto(false)}
         onSubmit={handleSubmit}
       />

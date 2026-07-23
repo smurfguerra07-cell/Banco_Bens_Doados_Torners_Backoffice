@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 import {
-  createToner,
   deleteToner,
   fetchToners,
+  guardarToner,
   toggleTonerAtivo,
-  updateToner,
 } from "@/services/toners"
 import type { TonerInput } from "@/types/toner"
 
@@ -21,21 +20,12 @@ export function useTonerMutations() {
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
 
-  const criar = useMutation({
-    mutationFn: (input: TonerInput) => createToner(input),
-    onSuccess: () => {
+  const guardar = useMutation({
+    mutationFn: (params: { id?: string; input: TonerInput; imagem?: File | null }) =>
+      guardarToner(params),
+    onSuccess: (_data, variables) => {
       invalidate()
-      toast.success("Toner criado.")
-    },
-    onError: (err) => toast.error(err.message),
-  })
-
-  const atualizar = useMutation({
-    mutationFn: ({ id, input }: { id: string; input: TonerInput }) =>
-      updateToner(id, input),
-    onSuccess: () => {
-      invalidate()
-      toast.success("Toner atualizado.")
+      toast.success(variables.id ? "Toner atualizado." : "Toner criado.")
     },
     onError: (err) => toast.error(err.message),
   })
@@ -62,5 +52,5 @@ export function useTonerMutations() {
       ),
   })
 
-  return { criar, atualizar, alternarAtivo, eliminar }
+  return { guardar, alternarAtivo, eliminar }
 }

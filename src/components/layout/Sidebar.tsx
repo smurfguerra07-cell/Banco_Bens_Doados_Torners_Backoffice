@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, disponivel: true },
   { to: "/toners", label: "Toners", icon: Package, disponivel: true },
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList, disponivel: true },
-  { to: "/empresas", label: "Empresas", icon: Building2, disponivel: false },
+  { to: "/empresas", label: "Empresas", icon: Building2, disponivel: true },
   { to: "/utilizadores", label: "Utilizadores", icon: Users, disponivel: false },
   { to: "/relatorios", label: "Relatórios", icon: FileBarChart, disponivel: false },
 ]
