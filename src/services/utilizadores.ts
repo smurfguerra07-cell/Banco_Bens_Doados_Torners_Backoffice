@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import {
   STAFF_ROLES,
@@ -25,7 +26,13 @@ export async function criarUtilizador(input: CriarUtilizadorInput) {
   const { data, error } = await supabase.functions.invoke("criar-utilizador", {
     body: input,
   })
-  if (error) throw error
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const corpo = await error.context.json().catch(() => null)
+      throw new Error(corpo?.error ?? error.message)
+    }
+    throw error
+  }
   if (data?.error) throw new Error(data.error)
   return data as { id: string }
 }
