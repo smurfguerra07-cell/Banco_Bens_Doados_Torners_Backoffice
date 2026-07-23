@@ -8,6 +8,8 @@ import { DashboardPage } from "@/pages/DashboardPage"
 import { ToniersPage } from "@/pages/ToniersPage"
 import { PedidosPage } from "@/pages/PedidosPage"
 import { EmpresasPage } from "@/pages/EmpresasPage"
+import { UtilizadoresPage } from "@/pages/UtilizadoresPage"
+import { RelatoriosPage } from "@/pages/RelatoriosPage"
 
 const queryClient = new QueryClient()
 
@@ -23,6 +25,8 @@ function App() {
               <Route path="/toners" element={<ToniersPage />} />
               <Route path="/pedidos" element={<PedidosPage />} />
               <Route path="/empresas" element={<EmpresasPage />} />
+              <Route path="/utilizadores" element={<UtilizadoresPage />} />
+              <Route path="/relatorios" element={<RelatoriosPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

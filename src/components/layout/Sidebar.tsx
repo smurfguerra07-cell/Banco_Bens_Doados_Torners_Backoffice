@@ -16,8 +16,8 @@ const NAV_ITEMS = [
   { to: "/toners", label: "Toners", icon: Package, disponivel: true },
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList, disponivel: true },
   { to: "/empresas", label: "Empresas", icon: Building2, disponivel: true },
-  { to: "/utilizadores", label: "Utilizadores", icon: Users, disponivel: false },
-  { to: "/relatorios", label: "Relatórios", icon: FileBarChart, disponivel: false },
+  { to: "/utilizadores", label: "Utilizadores", icon: Users, disponivel: true },
+  { to: "/relatorios", label: "Relatórios", icon: FileBarChart, disponivel: true },
 ]
 
 export function Sidebar() {

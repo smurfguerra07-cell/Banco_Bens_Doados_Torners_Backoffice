@@ -3,14 +3,7 @@ import toast from "react-hot-toast"
 import { LogOut, User } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Sidebar } from "@/components/layout/Sidebar"
-
-const ROLE_LABEL: Record<string, string> = {
-  administrador: "Administrador",
-  gestor: "Gestor",
-  operador: "Operador",
-  leitor: "Leitor",
-  cliente: "Cliente",
-}
+import { ROLE_LABEL } from "@/types/profile"
 
 export function DashboardLayout() {
   const { user, profile, loading, signOut } = useAuth()

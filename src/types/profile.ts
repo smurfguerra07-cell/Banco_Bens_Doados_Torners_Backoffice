@@ -7,6 +7,22 @@ export interface Profile {
   full_name: string
   telefone: string | null
   avatar_url: string | null
+  ativo: boolean
 }
 
 export const STAFF_ROLES: UserRole[] = ["administrador", "gestor", "operador", "leitor"]
+
+export const ROLE_LABEL: Record<UserRole, string> = {
+  administrador: "Administrador",
+  gestor: "Gestor",
+  operador: "Operador",
+  leitor: "Leitor",
+  cliente: "Cliente",
+}
+
+export interface UtilizadorInput {
+  full_name: string
+  telefone: string | null
+  role: UserRole
+  ativo: boolean
+}
