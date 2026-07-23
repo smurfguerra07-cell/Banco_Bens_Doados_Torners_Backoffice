@@ -86,7 +86,12 @@ create policy "Participantes enviam mensagens"
 
 -- ---------- STORAGE: anexos de tickets ----------
 -- Pré-requisito: criar o bucket "ticket-anexos" no Supabase Dashboard
--- (Storage → New bucket → "ticket-anexos", pode ficar privado).
+-- (Storage → New bucket → "ticket-anexos" → Public bucket: ON).
+-- Tem de ser público para o link de anexo (imagem/áudio) funcionar
+-- diretamente no chat sem gerar URLs assinadas a cada mensagem — o
+-- caminho inclui o UUID do ticket, o que já dificulta adivinhar URLs.
+-- As políticas abaixo continuam a proteger o acesso autenticado direto
+-- (download via API), mesmo com o bucket marcado como público.
 -- Convenção de caminho: {ticket_id}/{ficheiro}
 
 create policy "Participantes veem anexos dos seus tickets"
