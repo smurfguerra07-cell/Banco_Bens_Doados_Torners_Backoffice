@@ -67,6 +67,7 @@ export function PedidosPage() {
     const termo = pesquisa.trim().toLowerCase().replace(/^#/, "")
 
     return pedidos.filter((p) => {
+      if (filtro === "todos" && p.estado === "cancelado") return false
       if (filtro !== "todos" && p.estado !== filtro) return false
       if (!termo) return true
 
