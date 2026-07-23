@@ -10,7 +10,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { ClipboardCheck, ClipboardList, Package, PackageX } from "lucide-react"
+import {
+  Building2,
+  ClipboardCheck,
+  ClipboardList,
+  Leaf,
+  Package,
+  PackageX,
+  Recycle,
+} from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
@@ -20,6 +28,7 @@ import { PedidoDetailModal } from "@/components/pedidos/PedidoDetailModal"
 import { cn } from "@/lib/utils"
 
 const LIMITE_STOCK_BAIXO = 3
+const FATOR_CO2_KG_POR_TONER = 2.5
 
 const ESTADO_BADGE: Record<PedidoEstado, string> = {
   recebido: "bg-muted text-muted-foreground",
@@ -114,6 +123,17 @@ export function DashboardPage() {
 
   const ultimosPedidos = useMemo(() => (pedidos ?? []).slice(0, 6), [pedidos])
 
+  const impacto = useMemo(() => {
+    const concluidos = pedidos?.filter((p) => p.estado === "concluido") ?? []
+    const tonersReutilizados = concluidos.reduce(
+      (soma, p) => soma + p.pedido_itens.reduce((s, i) => s + i.quantidade, 0),
+      0
+    )
+    const entidadesApoiadas = new Set(concluidos.map((p) => p.empresa_id)).size
+    const co2Kg = tonersReutilizados * FATOR_CO2_KG_POR_TONER
+    return { tonersReutilizados, entidadesApoiadas, co2Kg }
+  }, [pedidos])
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-foreground">
@@ -141,6 +161,60 @@ export function DashboardPage() {
             </p>
           </Link>
         ))}
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 via-card to-card p-5 shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+            <Leaf className="size-[18px]" />
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">
+              Impacto ambiental
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Com base nos pedidos concluídos.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+              <Recycle className="size-5" />
+            </span>
+            <div>
+              <p className="text-2xl font-semibold text-foreground">
+                {impacto.tonersReutilizados}
+              </p>
+              <p className="text-xs text-muted-foreground">Toners reutilizados</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Building2 className="size-5" />
+            </span>
+            <div>
+              <p className="text-2xl font-semibold text-foreground">
+                {impacto.entidadesApoiadas}
+              </p>
+              <p className="text-xs text-muted-foreground">Entidades apoiadas</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+              <Leaf className="size-5" />
+            </span>
+            <div>
+              <p className="text-2xl font-semibold text-foreground">
+                {impacto.co2Kg >= 1000
+                  ? `${(impacto.co2Kg / 1000).toFixed(1)} ton`
+                  : `${impacto.co2Kg.toFixed(0)} kg`}
+              </p>
+              <p className="text-xs text-muted-foreground">CO₂ evitado (estimado)</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {pedidosPendentes > 0 && (
