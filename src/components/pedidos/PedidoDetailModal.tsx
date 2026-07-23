@@ -150,6 +150,9 @@ export function PedidoDetailModal({
                   {pedido.profiles?.full_name ?? "—"}
                 </span>
                 <span>{new Date(pedido.created_at).toLocaleDateString("pt-PT")}</span>
+                {pedido.ultima_acao?.full_name && (
+                  <span>Última ação por: {pedido.ultima_acao.full_name}</span>
+                )}
               </div>
 
               <ul className="mt-4 flex flex-col gap-1.5 border-t border-border pt-3">

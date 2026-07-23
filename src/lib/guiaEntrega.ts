@@ -45,6 +45,16 @@ export async function gerarGuiaEntregaPdf(pedido: Pedido, dataEntrega: string) {
 
   const empresa = pedido.empresas
   const solicitante = pedido.profiles
+  const pareceEmail = (valor: string) => valor.includes("@")
+
+  const nomeDestinatario =
+    solicitante?.full_name?.trim() ||
+    (empresa?.nome && !pareceEmail(empresa.nome) ? empresa.nome : null) ||
+    "—"
+  const nomeEntidade =
+    empresa?.nome && !pareceEmail(empresa.nome) && empresa.nome !== nomeDestinatario
+      ? empresa.nome
+      : null
 
   doc.setFontSize(9)
   doc.setTextColor(130)
@@ -54,10 +64,10 @@ export async function gerarGuiaEntregaPdf(pedido: Pedido, dataEntrega: string) {
   doc.setFontSize(10.5)
   doc.setTextColor(25)
   const linhasEntrega = [
-    empresa?.nome ?? "—",
-    solicitante?.full_name ? `Ao cuidado de: ${solicitante.full_name}` : null,
-    empresa?.morada ?? null,
-    [empresa?.codigo_postal, empresa?.cidade].filter(Boolean).join(" "),
+    nomeDestinatario,
+    nomeEntidade,
+    empresa?.morada?.trim() || "Morada não disponível",
+    [empresa?.codigo_postal, empresa?.cidade].filter(Boolean).join(" ") || null,
     (empresa?.telefone || solicitante?.telefone) &&
       `Tel: ${empresa?.telefone ?? solicitante?.telefone}`,
   ].filter((linha): linha is string => Boolean(linha && linha.trim()))

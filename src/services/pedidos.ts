@@ -5,6 +5,7 @@ const SELECT_COMPLETO = `
   *,
   empresas ( nome, morada, codigo_postal, cidade, telefone ),
   profiles!pedidos_solicitante_id_fkey ( full_name, telefone ),
+  ultima_acao:profiles!pedidos_ultima_acao_por_fkey ( full_name ),
   pedido_itens (
     id,
     toner_id,

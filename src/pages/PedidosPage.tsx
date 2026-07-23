@@ -198,6 +198,9 @@ export function PedidosPage() {
                   <span>
                     {new Date(pedido.created_at).toLocaleDateString("pt-PT")}
                   </span>
+                  {pedido.ultima_acao?.full_name && (
+                    <span>Última ação por: {pedido.ultima_acao.full_name}</span>
+                  )}
                 </div>
               </div>
 

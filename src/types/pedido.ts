@@ -47,9 +47,11 @@ export interface Pedido {
   observacoes: string | null
   motivo_recusa: string | null
   data_entrega: string | null
+  ultima_acao_por: string | null
   created_at: string
   aprovado_em: string | null
   concluido_em: string | null
+  ultima_acao: { full_name: string } | null
   empresas: {
     nome: string
     morada: string | null
