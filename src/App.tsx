@@ -5,6 +5,8 @@ import { AuthProvider } from "@/contexts/AuthContext"
 import { DashboardLayout } from "@/layouts/DashboardLayout"
 import { LoginPage } from "@/pages/LoginPage"
 import { DashboardPage } from "@/pages/DashboardPage"
+import { ToniersPage } from "@/pages/ToniersPage"
+import { PedidosPage } from "@/pages/PedidosPage"
 
 const queryClient = new QueryClient()
 
@@ -17,6 +19,8 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<DashboardLayout />}>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/toners" element={<ToniersPage />} />
+              <Route path="/pedidos" element={<PedidosPage />} />
             </Route>
           </Routes>
         </BrowserRouter>
