@@ -4,6 +4,7 @@ export interface Empresa {
   id: string
   nome: string
   nif: string | null
+  codigo_entrajuda: string | null
   tipo: EmpresaTipo
   morada: string | null
   codigo_postal: string | null
@@ -24,6 +25,7 @@ export const EMPRESA_TIPO_LABEL: Record<EmpresaTipo, string> = {
 export interface EmpresaInput {
   nome: string
   nif: string | null
+  codigo_entrajuda: string | null
   tipo: EmpresaTipo
   morada: string | null
   codigo_postal: string | null

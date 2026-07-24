@@ -9,6 +9,7 @@ const TIPOS: EmpresaTipo[] = ["doadora", "beneficiaria", "ambas"]
 const VAZIO: EmpresaInput = {
   nome: "",
   nif: "",
+  codigo_entrajuda: "",
   tipo: "beneficiaria",
   morada: "",
   codigo_postal: "",
@@ -40,6 +41,7 @@ export function EmpresaFormModal({
       setForm({
         nome: empresa.nome,
         nif: empresa.nif ?? "",
+        codigo_entrajuda: empresa.codigo_entrajuda ?? "",
         tipo: empresa.tipo,
         morada: empresa.morada ?? "",
         codigo_postal: empresa.codigo_postal ?? "",
@@ -111,22 +113,33 @@ export function EmpresaFormModal({
                   />
                 </label>
                 <label className="flex flex-col gap-1.5 text-sm">
-                  <span className="font-medium text-foreground">Tipo</span>
-                  <select
-                    value={form.tipo}
+                  <span className="font-medium text-foreground">Código Entrajuda</span>
+                  <input
+                    value={form.codigo_entrajuda ?? ""}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, tipo: e.target.value as EmpresaTipo }))
+                      setForm((f) => ({ ...f, codigo_entrajuda: e.target.value }))
                     }
                     className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
-                  >
-                    {TIPOS.map((tipo) => (
-                      <option key={tipo} value={tipo}>
-                        {tipo}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
               </div>
+
+              <label className="flex flex-col gap-1.5 text-sm">
+                <span className="font-medium text-foreground">Tipo</span>
+                <select
+                  value={form.tipo}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, tipo: e.target.value as EmpresaTipo }))
+                  }
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                >
+                  {TIPOS.map((tipo) => (
+                    <option key={tipo} value={tipo}>
+                      {tipo}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
               <label className="flex flex-col gap-1.5 text-sm">
                 <span className="font-medium text-foreground">Morada</span>
