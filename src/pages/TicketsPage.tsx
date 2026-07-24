@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { motion } from "framer-motion"
 import { MessageCircle, Search, User } from "lucide-react"
 import { useTickets } from "@/hooks/useTickets"
 import { TicketChatModal } from "@/components/tickets/TicketChatModal"
@@ -9,6 +10,9 @@ import {
   type TicketEstado,
 } from "@/types/ticket"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/Skeleton"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { EstadoBadge } from "@/components/ui/EstadoBadge"
 
 const ESTADO_BADGE: Record<TicketEstado, string> = {
   aberto: "bg-primary/10 text-primary",
@@ -77,21 +81,37 @@ export function TicketsPage() {
       </div>
 
       <div className="mt-6 flex flex-col gap-2">
-        {isLoading && (
-          <p className="py-10 text-center text-sm text-muted-foreground">A carregar...</p>
-        )}
+        {isLoading &&
+          Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 shadow-sm"
+            >
+              <Skeleton className="size-9 shrink-0 rounded-lg" />
+              <div className="flex-1">
+                <Skeleton className="h-3.5 w-56" />
+                <Skeleton className="mt-2 h-3 w-40" />
+              </div>
+              <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
+            </div>
+          ))}
 
         {!isLoading && filtrados.length === 0 && (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            Sem tickets para este filtro.
-          </p>
+          <EmptyState
+            icon={MessageCircle}
+            titulo="Sem tickets para este filtro"
+            descricao="Experimenta outro filtro ou termo de pesquisa."
+          />
         )}
 
-        {filtrados.map((ticket) => (
-          <button
+        {filtrados.map((ticket, i) => (
+          <motion.button
             key={ticket.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: Math.min(i, 10) * 0.04 }}
             onClick={() => setTicketAberto(ticket)}
-            className="flex items-center justify-between rounded-xl border border-border bg-card px-5 py-4 text-left shadow-sm transition hover:bg-muted/40"
+            className="flex items-center justify-between rounded-xl border border-border bg-card px-5 py-4 text-left shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="flex items-center gap-3">
               <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -111,15 +131,13 @@ export function TicketsPage() {
                 </div>
               </div>
             </div>
-            <span
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-xs font-medium",
-                ESTADO_BADGE[ticket.estado]
-              )}
+            <EstadoBadge
+              className={ESTADO_BADGE[ticket.estado]}
+              pulsar={ticket.estado === "aberto"}
             >
               {TICKET_ESTADO_LABEL[ticket.estado]}
-            </span>
-          </button>
+            </EstadoBadge>
+          </motion.button>
         ))}
       </div>
 

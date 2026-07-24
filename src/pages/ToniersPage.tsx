@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react"
+import { motion } from "framer-motion"
 import { FileUp, History, Package, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { useToners, useTonerMutations } from "@/hooks/useToners"
 import { useAuth } from "@/contexts/AuthContext"
 import { TonerFormModal } from "@/components/toners/TonerFormModal"
 import { ImportarTonersModal } from "@/components/toners/ImportarTonersModal"
 import { HistoricoTonerModal } from "@/components/toners/HistoricoTonerModal"
+import { Skeleton } from "@/components/ui/Skeleton"
+import { EmptyState } from "@/components/ui/EmptyState"
 import { TONER_ESTADO_LABEL, type Toner, type TonerInput } from "@/types/toner"
 import { cn } from "@/lib/utils"
 
@@ -114,26 +117,58 @@ export function ToniersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {isLoading && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                  A carregar...
-                </td>
-              </tr>
-            )}
+            {isLoading &&
+              Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="size-10 rounded-lg" />
+                      <div className="flex flex-col gap-1.5">
+                        <Skeleton className="h-3.5 w-32" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-3.5 w-16" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-3.5 w-12" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-3.5 w-20" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-8 w-24 rounded-lg" />
+                  </td>
+                </tr>
+              ))}
 
             {!isLoading && filtrados.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                  Sem toners para mostrar.
+                <td colSpan={6}>
+                  <EmptyState
+                    icon={Package}
+                    titulo="Sem toners para mostrar"
+                    descricao="Cria um novo toner ou importa um ficheiro para começares."
+                  />
                 </td>
               </tr>
             )}
 
-            {visiveis.map((toner) => {
+            {visiveis.map((toner, i) => {
               const disponivel = toner.quantidade - toner.quantidade_reservada
               return (
-                <tr key={toner.id} className="hover:bg-muted/30">
+                <motion.tr
+                  key={toner.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: Math.min(i, 10) * 0.03 }}
+                  className="transition-colors hover:bg-muted/30"
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -206,7 +241,7 @@ export function ToniersPage() {
                       </button>
                     </div>
                   </td>
-                </tr>
+                </motion.tr>
               )
             })}
           </tbody>

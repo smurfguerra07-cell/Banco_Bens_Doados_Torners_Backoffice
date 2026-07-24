@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { Building2, Download, Package, Search, User } from "lucide-react"
+import { motion } from "framer-motion"
+import { Building2, ClipboardList, Download, Package, Search, User } from "lucide-react"
 import toast from "react-hot-toast"
 import { usePedidos, useAtualizarEstadoPedido } from "@/hooks/usePedidos"
 import {
@@ -11,6 +12,9 @@ import {
 import { cn } from "@/lib/utils"
 import { AgendarEntregaModal } from "@/components/pedidos/AgendarEntregaModal"
 import { gerarGuiaEntregaPdf } from "@/lib/guiaEntrega"
+import { Skeleton } from "@/components/ui/Skeleton"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { EstadoBadge } from "@/components/ui/EstadoBadge"
 
 const ESTADO_BADGE: Record<PedidoEstado, string> = {
   recebido: "bg-muted text-muted-foreground",
@@ -22,6 +26,8 @@ const ESTADO_BADGE: Record<PedidoEstado, string> = {
   recusado: "bg-secondary/10 text-secondary",
   cancelado: "bg-secondary/10 text-secondary",
 }
+
+const ESTADOS_PENDENTES: PedidoEstado[] = ["recebido", "em_analise"]
 
 const AVANCAR_LABEL: Record<PedidoEstado, string> = {
   recebido: "Colocar em análise",
@@ -155,22 +161,33 @@ export function PedidosPage() {
       </div>
 
       <div className="mt-6 flex flex-col gap-3">
-        {isLoading && (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            A carregar...
-          </p>
-        )}
+        {isLoading &&
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+              <Skeleton className="mt-3 h-3 w-64" />
+              <Skeleton className="mt-4 h-3 w-48" />
+            </div>
+          ))}
 
         {!isLoading && filtrados.length === 0 && (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            Sem pedidos para este filtro.
-          </p>
+          <EmptyState
+            icon={ClipboardList}
+            titulo="Sem pedidos para este filtro"
+            descricao="Experimenta outro filtro ou termo de pesquisa."
+          />
         )}
 
-        {filtrados.map((pedido) => (
-          <div
+        {filtrados.map((pedido, i) => (
+          <motion.div
             key={pedido.id}
-            className="rounded-xl border border-border bg-card p-5 shadow-sm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: Math.min(i, 10) * 0.04 }}
+            className="rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -178,14 +195,12 @@ export function PedidosPage() {
                   <p className="font-semibold text-foreground">
                     Pedido #{pedido.numero}
                   </p>
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-0.5 text-xs font-medium",
-                      ESTADO_BADGE[pedido.estado]
-                    )}
+                  <EstadoBadge
+                    className={ESTADO_BADGE[pedido.estado]}
+                    pulsar={ESTADOS_PENDENTES.includes(pedido.estado)}
                   >
                     {PEDIDO_ESTADO_LABEL[pedido.estado]}
-                  </span>
+                  </EstadoBadge>
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
@@ -274,7 +289,7 @@ export function PedidosPage() {
                 {pedido.motivo_recusa}
               </p>
             )}
-          </div>
+          </motion.div>
         ))}
       </div>
 

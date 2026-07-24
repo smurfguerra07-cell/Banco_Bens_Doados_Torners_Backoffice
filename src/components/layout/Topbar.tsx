@@ -74,12 +74,21 @@ export function Topbar() {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
-                  ativo && "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary"
+                  "relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  ativo
+                    ? "text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                <Icon className="size-4" />
-                {item.label}
+                {ativo && (
+                  <motion.span
+                    layoutId="topbar-active-pill"
+                    className="absolute inset-0 rounded-lg bg-primary/10"
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                  />
+                )}
+                <Icon className="relative size-4" />
+                <span className="relative">{item.label}</span>
               </Link>
             )
           })}
@@ -97,8 +106,11 @@ export function Topbar() {
             >
               <Bell className="size-[18px]" />
               {totalNotificacoes > 0 && (
-                <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-secondary-foreground">
-                  {totalNotificacoes}
+                <span className="absolute right-1 top-1 flex size-4 items-center justify-center">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-secondary/60" />
+                  <span className="relative flex size-4 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-secondary-foreground">
+                    {totalNotificacoes}
+                  </span>
                 </span>
               )}
             </button>

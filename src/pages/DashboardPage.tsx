@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { Link } from "react-router"
+import { motion } from "framer-motion"
 import {
   Bar,
   BarChart,
@@ -11,6 +12,7 @@ import {
   YAxis,
 } from "recharts"
 import {
+  Bell,
   Building2,
   ClipboardCheck,
   ClipboardList,
@@ -25,7 +27,11 @@ import { usePedidos } from "@/hooks/usePedidos"
 import { PEDIDO_ESTADO_LABEL, type Pedido, type PedidoEstado } from "@/types/pedido"
 import { Bar3D } from "@/components/dashboard/Bar3D"
 import { PedidoDetailModal } from "@/components/pedidos/PedidoDetailModal"
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber"
+import { EstadoBadge } from "@/components/ui/EstadoBadge"
 import { cn } from "@/lib/utils"
+
+const ESTADOS_PENDENTES: PedidoEstado[] = ["recebido", "em_analise"]
 
 const LIMITE_STOCK_BAIXO = 3
 const FATOR_CO2_KG_POR_TONER = 2.5
@@ -144,26 +150,39 @@ export function DashboardPage() {
       </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cartoes.map((c) => (
-          <Link
+        {cartoes.map((c, i) => (
+          <motion.div
             key={c.titulo}
-            to={c.to}
-            className="rounded-xl border border-border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: i * 0.07, ease: "easeOut" }}
+            whileHover={{ y: -4 }}
+            className="group"
           >
-            <span className={cn("flex size-10 items-center justify-center rounded-lg", c.cor)}>
-              <c.icon className="size-5" />
-            </span>
-            <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {c.titulo}
-            </p>
-            <p className="mt-1 text-3xl font-semibold text-foreground">
-              {c.valor}
-            </p>
-          </Link>
+            <Link
+              to={c.to}
+              className="block rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow duration-200 group-hover:shadow-lg"
+            >
+              <span className={cn("flex size-10 items-center justify-center rounded-lg", c.cor)}>
+                <c.icon className="size-5" />
+              </span>
+              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {c.titulo}
+              </p>
+              <p className="mt-1 text-3xl font-semibold text-foreground">
+                <AnimatedNumber value={c.valor} />
+              </p>
+            </Link>
+          </motion.div>
         ))}
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 via-card to-card p-5 shadow-sm">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.28, ease: "easeOut" }}
+        className="mt-4 overflow-hidden rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-card p-5 shadow-sm"
+      >
         <div className="flex items-center gap-2">
           <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
             <Leaf className="size-[18px]" />
@@ -181,11 +200,11 @@ export function DashboardPage() {
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <div className="flex items-center gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
-              <Recycle className="size-5" />
+              <Recycle className="size-5 animate-spin-slow" />
             </span>
             <div>
               <p className="text-2xl font-semibold text-foreground">
-                {impacto.tonersReutilizados}
+                <AnimatedNumber value={impacto.tonersReutilizados} />
               </p>
               <p className="text-xs text-muted-foreground">Toners reutilizados</p>
             </div>
@@ -196,7 +215,7 @@ export function DashboardPage() {
             </span>
             <div>
               <p className="text-2xl font-semibold text-foreground">
-                {impacto.entidadesApoiadas}
+                <AnimatedNumber value={impacto.entidadesApoiadas} />
               </p>
               <p className="text-xs text-muted-foreground">Entidades apoiadas</p>
             </div>
@@ -207,28 +226,42 @@ export function DashboardPage() {
             </span>
             <div>
               <p className="text-2xl font-semibold text-foreground">
-                {impacto.co2Kg >= 1000
-                  ? `${(impacto.co2Kg / 1000).toFixed(1)} ton`
-                  : `${impacto.co2Kg.toFixed(0)} kg`}
+                <AnimatedNumber
+                  value={impacto.co2Kg}
+                  formatar={(n) =>
+                    n >= 1000 ? `${(n / 1000).toFixed(1)} ton` : `${n.toFixed(0)} kg`
+                  }
+                />
               </p>
               <p className="text-xs text-muted-foreground">CO₂ evitado (estimado)</p>
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {pedidosPendentes > 0 && (
-        <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 shadow-sm">
-          <p className="text-sm font-medium text-foreground">
-            Tens {pedidosPendentes} pedido(s) à espera de análise.
-          </p>
-          <Link
-            to="/pedidos"
-            className="mt-1 inline-block text-sm font-medium text-primary"
-          >
-            Ver pedidos →
-          </Link>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.34, ease: "easeOut" }}
+          className="mt-6 flex items-start gap-3 rounded-xl border border-amber-500/30 border-l-4 border-l-amber-500 bg-amber-500/5 p-5 shadow-sm"
+        >
+          <span className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-amber-500/30" />
+            <Bell className="relative size-[18px]" />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Tens {pedidosPendentes} pedido(s) à espera de análise.
+            </p>
+            <Link
+              to="/pedidos"
+              className="mt-1 inline-block text-sm font-medium text-primary"
+            >
+              Ver pedidos →
+            </Link>
+          </div>
+        </motion.div>
       )}
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
@@ -252,10 +285,19 @@ export function DashboardPage() {
                     contentStyle={{
                       borderRadius: 8,
                       borderColor: "var(--color-border)",
+                      boxShadow: "0 8px 24px -8px rgb(0 0 0 / 0.18)",
                       fontSize: 12,
                     }}
+                    labelStyle={{ fontWeight: 600, marginBottom: 2 }}
                   />
-                  <Bar dataKey="total" shape={Bar3D} maxBarSize={44}>
+                  <Bar
+                    dataKey="total"
+                    shape={Bar3D}
+                    maxBarSize={44}
+                    isAnimationActive
+                    animationDuration={900}
+                    animationEasing="ease-out"
+                  >
                     {dadosGrafico.map((d) => (
                       <Cell key={d.estado} fill={d.cor} />
                     ))}
@@ -282,11 +324,14 @@ export function DashboardPage() {
                 Ainda não há pedidos.
               </p>
             )}
-            {ultimosPedidos.map((pedido) => (
-              <button
+            {ultimosPedidos.map((pedido, i) => (
+              <motion.button
                 key={pedido.id}
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.25, delay: i * 0.05 }}
                 onClick={() => setPedidoSelecionado(pedido)}
-                className="flex items-center justify-between rounded-lg py-3 text-left transition hover:bg-muted/50"
+                className="flex items-center justify-between rounded-lg py-3 text-left transition-colors hover:bg-muted/50"
               >
                 <div className="flex items-center gap-3">
                   <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -302,15 +347,13 @@ export function DashboardPage() {
                     </p>
                   </div>
                 </div>
-                <span
-                  className={cn(
-                    "rounded-full px-2.5 py-0.5 text-xs font-medium",
-                    ESTADO_BADGE[pedido.estado]
-                  )}
+                <EstadoBadge
+                  className={ESTADO_BADGE[pedido.estado]}
+                  pulsar={ESTADOS_PENDENTES.includes(pedido.estado)}
                 >
                   {PEDIDO_ESTADO_LABEL[pedido.estado]}
-                </span>
-              </button>
+                </EstadoBadge>
+              </motion.button>
             ))}
           </div>
         </div>
