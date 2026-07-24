@@ -4,9 +4,11 @@ import {
   deleteToner,
   fetchToners,
   guardarToner,
+  importarToners,
   toggleTonerAtivo,
 } from "@/services/toners"
 import type { TonerInput } from "@/types/toner"
+import type { TonerImportado } from "@/lib/importToners"
 
 export function useToners() {
   return useQuery({
@@ -53,4 +55,17 @@ export function useTonerMutations() {
   })
 
   return { guardar, alternarAtivo, eliminar }
+}
+
+export function useImportarToners() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (itens: TonerImportado[]) => importarToners(itens),
+    onSuccess: ({ novos, atualizados }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
+      toast.success(`Importação concluída: ${novos} novo(s), ${atualizados} atualizado(s).`)
+    },
+    onError: (err) => toast.error(err.message),
+  })
 }

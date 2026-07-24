@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase"
 import type { Toner, TonerInput } from "@/types/toner"
+import type { TonerImportado } from "@/lib/importToners"
 
 export async function fetchToners(): Promise<Toner[]> {
   const { data, error } = await supabase
@@ -73,6 +74,51 @@ export async function substituirImagemToner(tonerId: string, file: File) {
   if (insertError) throw insertError
 
   return publicUrl
+}
+
+/**
+ * Importa vários toners de uma vez (CSV/Excel). Faz upsert por referência:
+ * se já existir um toner com a mesma referência, soma a quantidade
+ * importada ao stock atual e só substitui os campos opcionais (categoria,
+ * cor, localização, compatibilidade, estado) se o ficheiro os trouxer —
+ * caso contrário mantém o que já lá estava.
+ */
+export async function importarToners(itens: TonerImportado[]) {
+  const referencias = itens.map((i) => i.referencia)
+  const { data: existentes, error: fetchError } = await supabase
+    .from("toners")
+    .select("referencia, quantidade, estado, categoria, cor, localizacao, compatibilidade")
+    .in("referencia", referencias)
+  if (fetchError) throw fetchError
+
+  const porReferencia = new Map((existentes ?? []).map((t) => [t.referencia, t]))
+
+  const linhas = itens.map((item) => {
+    const existente = porReferencia.get(item.referencia)
+    return {
+      marca: item.marca,
+      modelo: item.modelo,
+      referencia: item.referencia,
+      quantidade: (existente?.quantidade ?? 0) + item.quantidade,
+      estado: item.estado ?? existente?.estado ?? "novo",
+      categoria: item.categoria || existente?.categoria || null,
+      cor: item.cor || existente?.cor || null,
+      localizacao: item.localizacao || existente?.localizacao || null,
+      compatibilidade:
+        item.compatibilidade.length > 0
+          ? item.compatibilidade
+          : (existente?.compatibilidade ?? []),
+      ativo: true,
+    }
+  })
+
+  const { error } = await supabase.from("toners").upsert(linhas, { onConflict: "referencia" })
+  if (error) throw error
+
+  return {
+    novos: linhas.length - porReferencia.size,
+    atualizados: porReferencia.size,
+  }
 }
 
 /** Cria ou atualiza um toner e, opcionalmente, a sua imagem — num só passo. */

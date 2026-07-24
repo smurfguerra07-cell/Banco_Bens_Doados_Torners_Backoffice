@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react"
-import { Package, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { FileUp, Package, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { useToners, useTonerMutations } from "@/hooks/useToners"
 import { TonerFormModal } from "@/components/toners/TonerFormModal"
+import { ImportarTonersModal } from "@/components/toners/ImportarTonersModal"
 import { TONER_ESTADO_LABEL, type Toner, type TonerInput } from "@/types/toner"
 import { cn } from "@/lib/utils"
 
@@ -10,6 +11,7 @@ export function ToniersPage() {
   const { guardar, alternarAtivo, eliminar } = useTonerMutations()
   const [pesquisa, setPesquisa] = useState("")
   const [modalAberto, setModalAberto] = useState(false)
+  const [importarAberto, setImportarAberto] = useState(false)
   const [tonerEditar, setTonerEditar] = useState<Toner | null>(null)
 
   const filtrados = useMemo(() => {
@@ -55,13 +57,22 @@ export function ToniersPage() {
             Gestão do inventário de toners.
           </p>
         </div>
-        <button
-          onClick={abrirCriar}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-        >
-          <Plus className="size-4" />
-          Novo toner
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImportarAberto(true)}
+            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+          >
+            <FileUp className="size-4" />
+            Importar
+          </button>
+          <button
+            onClick={abrirCriar}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+          >
+            <Plus className="size-4" />
+            Novo toner
+          </button>
+        </div>
       </div>
 
       <div className="mt-6 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 sm:max-w-sm">
@@ -185,6 +196,11 @@ export function ToniersPage() {
         aGuardar={guardar.isPending}
         onClose={() => setModalAberto(false)}
         onSubmit={handleSubmit}
+      />
+
+      <ImportarTonersModal
+        aberto={importarAberto}
+        onClose={() => setImportarAberto(false)}
       />
     </div>
   )
