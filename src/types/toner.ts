@@ -18,6 +18,7 @@ export interface Toner {
   estado: TonerEstado
   localizacao: string | null
   categoria: string | null
+  cor: string | null
   observacoes: string | null
   ativo: boolean
   created_at: string
@@ -39,6 +40,7 @@ export interface TonerInput {
   estado: TonerEstado
   localizacao: string | null
   categoria: string | null
+  cor: string | null
   observacoes: string | null
   ativo: boolean
 }

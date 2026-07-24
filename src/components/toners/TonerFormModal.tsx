@@ -15,6 +15,7 @@ const VAZIO: TonerInput = {
   estado: "novo",
   localizacao: "",
   categoria: "",
+  cor: "",
   observacoes: "",
   ativo: true,
 }
@@ -50,6 +51,7 @@ export function TonerFormModal({
         estado: toner.estado,
         localizacao: toner.localizacao ?? "",
         categoria: toner.categoria ?? "",
+        cor: toner.cor ?? "",
         observacoes: toner.observacoes ?? "",
         ativo: toner.ativo,
       })
@@ -253,6 +255,16 @@ export function TonerFormModal({
                     />
                   </label>
                 </div>
+
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">Cor</span>
+                  <input
+                    value={form.cor ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, cor: e.target.value }))}
+                    placeholder="Preto, Ciano, Magenta, Amarelo..."
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  />
+                </label>
 
                 <label className="flex flex-col gap-1.5 text-sm">
                   <span className="font-medium text-foreground">Observações</span>
