@@ -8,11 +8,14 @@ import { HistoricoTonerModal } from "@/components/toners/HistoricoTonerModal"
 import { TONER_ESTADO_LABEL, type Toner, type TonerInput } from "@/types/toner"
 import { cn } from "@/lib/utils"
 
+const PAGE_SIZE = 15
+
 export function ToniersPage() {
   const { data: toners, isLoading } = useToners()
   const { guardar, alternarAtivo, eliminar } = useTonerMutations()
   const { user } = useAuth()
   const [pesquisa, setPesquisa] = useState("")
+  const [pagina, setPagina] = useState(1)
   const [modalAberto, setModalAberto] = useState(false)
   const [importarAberto, setImportarAberto] = useState(false)
   const [tonerEditar, setTonerEditar] = useState<Toner | null>(null)
@@ -28,6 +31,15 @@ export function ToniersPage() {
         t.referencia.toLowerCase().includes(termo)
     )
   }, [toners, pesquisa])
+
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE))
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const visiveis = filtrados.slice((paginaAtual - 1) * PAGE_SIZE, paginaAtual * PAGE_SIZE)
+
+  function handlePesquisa(valor: string) {
+    setPesquisa(valor)
+    setPagina(1)
+  }
 
   function abrirCriar() {
     setTonerEditar(null)
@@ -83,7 +95,7 @@ export function ToniersPage() {
         <Search className="size-4 text-muted-foreground" />
         <input
           value={pesquisa}
-          onChange={(e) => setPesquisa(e.target.value)}
+          onChange={(e) => handlePesquisa(e.target.value)}
           placeholder="Pesquisar por marca, modelo ou referência..."
           className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
@@ -118,7 +130,7 @@ export function ToniersPage() {
               </tr>
             )}
 
-            {filtrados.map((toner) => {
+            {visiveis.map((toner) => {
               const disponivel = toner.quantidade - toner.quantidade_reservada
               return (
                 <tr key={toner.id} className="hover:bg-muted/30">
@@ -200,6 +212,25 @@ export function ToniersPage() {
           </tbody>
         </table>
       </div>
+
+      {totalPaginas > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-2">
+          {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              onClick={() => setPagina(n)}
+              className={cn(
+                "size-8 rounded-lg text-sm font-medium transition",
+                n === paginaAtual
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      )}
 
       <TonerFormModal
         toner={tonerEditar}
