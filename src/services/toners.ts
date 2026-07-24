@@ -83,7 +83,10 @@ export async function substituirImagemToner(tonerId: string, file: File) {
  * cor, localização, compatibilidade, estado) se o ficheiro os trouxer —
  * caso contrário mantém o que já lá estava.
  */
-export async function importarToners(itens: TonerImportado[]) {
+export async function importarToners(
+  itens: TonerImportado[],
+  params: { empresaId: string | null; profileId: string }
+) {
   const referencias = itens.map((i) => i.referencia)
   const { data: existentes, error: fetchError } = await supabase
     .from("toners")
@@ -112,8 +115,32 @@ export async function importarToners(itens: TonerImportado[]) {
     }
   })
 
-  const { error } = await supabase.from("toners").upsert(linhas, { onConflict: "referencia" })
+  const { data: gravados, error } = await supabase
+    .from("toners")
+    .upsert(linhas, { onConflict: "referencia" })
+    .select("id, referencia")
   if (error) throw error
+
+  const idPorReferencia = new Map((gravados ?? []).map((t) => [t.referencia, t.id]))
+  const movimentos = itens
+    .map((item) => {
+      const tonerId = idPorReferencia.get(item.referencia)
+      if (!tonerId) return null
+      return {
+        toner_id: tonerId,
+        tipo: "entrada" as const,
+        quantidade: item.quantidade,
+        empresa_id: params.empresaId,
+        profile_id: params.profileId,
+        motivo: "Importação de ficheiro",
+      }
+    })
+    .filter((m): m is NonNullable<typeof m> => m !== null)
+
+  if (movimentos.length > 0) {
+    const { error: movError } = await supabase.from("movimentos_stock").insert(movimentos)
+    if (movError) throw movError
+  }
 
   return {
     novos: linhas.length - porReferencia.size,
@@ -121,18 +148,43 @@ export async function importarToners(itens: TonerImportado[]) {
   }
 }
 
-/** Cria ou atualiza um toner e, opcionalmente, a sua imagem — num só passo. */
+/**
+ * Cria ou atualiza um toner e, opcionalmente, a sua imagem — num só
+ * passo. Se a quantidade subir (toner novo, ou edição que aumenta o
+ * stock), regista automaticamente uma entrada no histórico, com a
+ * empresa doadora escolhida (se houver).
+ */
 export async function guardarToner(params: {
   id?: string
   input: TonerInput
   imagem?: File | null
+  empresaId?: string | null
+  profileId?: string
 }) {
+  const quantidadeAnterior = params.id
+    ? ((await supabase.from("toners").select("quantidade").eq("id", params.id).single()).data
+        ?.quantidade ?? 0)
+    : 0
+
   const toner = params.id
     ? await updateToner(params.id, params.input)
     : await createToner(params.input)
 
   if (params.imagem) {
     await substituirImagemToner(toner.id, params.imagem)
+  }
+
+  const entrada = toner.quantidade - quantidadeAnterior
+  if (entrada > 0 && params.profileId) {
+    const { error } = await supabase.from("movimentos_stock").insert({
+      toner_id: toner.id,
+      tipo: "entrada",
+      quantidade: entrada,
+      empresa_id: params.empresaId || null,
+      profile_id: params.profileId,
+      motivo: params.id ? "Ajuste manual do stock" : "Criação do toner",
+    })
+    if (error) throw error
   }
 
   return toner

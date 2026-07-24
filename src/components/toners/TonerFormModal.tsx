@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { ImagePlus, Package, X } from "lucide-react"
 import type { Toner, TonerEstado, TonerInput } from "@/types/toner"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
+import { useEmpresas } from "@/hooks/useEmpresas"
 
 const ESTADOS: TonerEstado[] = ["novo", "usado", "reconstruido"]
 
@@ -31,12 +32,14 @@ export function TonerFormModal({
   aberto: boolean
   aGuardar: boolean
   onClose: () => void
-  onSubmit: (input: TonerInput, imagem: File | null) => void
+  onSubmit: (input: TonerInput, imagem: File | null, empresaId: string | null) => void
 }) {
+  const { data: empresas } = useEmpresas()
   const [form, setForm] = useState<TonerInput>(VAZIO)
   const [compatibilidadeTexto, setCompatibilidadeTexto] = useState("")
   const [imagem, setImagem] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [empresaId, setEmpresaId] = useState("")
   const inputFileRef = useRef<HTMLInputElement>(null)
   useBodyScrollLock(aberto)
 
@@ -63,6 +66,7 @@ export function TonerFormModal({
       setPreviewUrl(null)
     }
     setImagem(null)
+    setEmpresaId("")
   }, [toner, aberto])
 
   function handleEscolherImagem(e: ChangeEvent<HTMLInputElement>) {
@@ -82,7 +86,8 @@ export function TonerFormModal({
           .map((s) => s.trim())
           .filter(Boolean),
       },
-      imagem
+      imagem,
+      empresaId || null
     )
   }
 
@@ -232,6 +237,26 @@ export function TonerFormModal({
                     </select>
                   </label>
                 </div>
+
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">
+                    Empresa doadora {toner ? "(se a quantidade subir)" : ""}
+                  </span>
+                  <select
+                    value={empresaId}
+                    onChange={(e) => setEmpresaId(e.target.value)}
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  >
+                    <option value="">— Não associar —</option>
+                    {empresas
+                      ?.filter((e) => e.tipo !== "beneficiaria")
+                      .map((empresa) => (
+                      <option key={empresa.id} value={empresa.id}>
+                        {empresa.nome}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
                 <div className="grid grid-cols-2 gap-4">
                   <label className="flex flex-col gap-1.5 text-sm">

@@ -13,6 +13,8 @@ import {
   type TonerImportado,
 } from "@/lib/importToners"
 import { useImportarToners, useToners } from "@/hooks/useToners"
+import { useEmpresas } from "@/hooks/useEmpresas"
+import { useAuth } from "@/contexts/AuthContext"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 import { cn } from "@/lib/utils"
 
@@ -38,12 +40,15 @@ export function ImportarTonersModal({
   onClose: () => void
 }) {
   const { data: toners } = useToners()
+  const { data: empresas } = useEmpresas()
+  const { user } = useAuth()
   const importar = useImportarToners()
   const [passo, setPasso] = useState<Passo>("upload")
   const [ficheiro, setFicheiro] = useState<FicheiroParsed | null>(null)
   const [nomeFicheiro, setNomeFicheiro] = useState("")
   const [mapeamento, setMapeamento] = useState<Partial<Record<CampoToner, string>>>({})
   const [valoresPadrao, setValoresPadrao] = useState<Partial<Record<CampoToner, string>>>({})
+  const [empresaId, setEmpresaId] = useState<string>("")
   const [aProcessar, setAProcessar] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   useBodyScrollLock(aberto)
@@ -75,6 +80,7 @@ export function ImportarTonersModal({
     setNomeFicheiro("")
     setMapeamento({})
     setValoresPadrao({})
+    setEmpresaId("")
     if (inputRef.current) inputRef.current.value = ""
   }
 
@@ -135,7 +141,11 @@ export function ImportarTonersModal({
   }
 
   function handleImportar() {
-    importar.mutate(validos, { onSuccess: fechar })
+    if (!user) return
+    importar.mutate(
+      { itens: validos, empresaId: empresaId || null, profileId: user.id },
+      { onSuccess: fechar }
+    )
   }
 
   return (
@@ -307,6 +317,30 @@ export function ImportarTonersModal({
                     Referências já existentes no catálogo somam a quantidade importada ao stock
                     atual; as novas são criadas.
                   </p>
+
+                  <label className="flex flex-col gap-1.5 text-sm sm:max-w-xs">
+                    <span className="font-medium text-foreground">
+                      Empresa doadora deste lote (opcional)
+                    </span>
+                    <select
+                      value={empresaId}
+                      onChange={(e) => setEmpresaId(e.target.value)}
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                    >
+                      <option value="">— Não associar —</option>
+                      {empresas
+                        ?.filter((e) => e.tipo !== "beneficiaria")
+                        .map((empresa) => (
+                        <option key={empresa.id} value={empresa.id}>
+                          {empresa.nome}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-muted-foreground">
+                      Fica registada no histórico de cada toner desta importação, para se saber
+                      de onde veio o stock.
+                    </span>
+                  </label>
 
                   <div className="overflow-hidden rounded-xl border border-border">
                     <table className="w-full text-xs">

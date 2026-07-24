@@ -1,18 +1,22 @@
 import { useMemo, useState } from "react"
-import { FileUp, Package, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { FileUp, History, Package, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { useToners, useTonerMutations } from "@/hooks/useToners"
+import { useAuth } from "@/contexts/AuthContext"
 import { TonerFormModal } from "@/components/toners/TonerFormModal"
 import { ImportarTonersModal } from "@/components/toners/ImportarTonersModal"
+import { HistoricoTonerModal } from "@/components/toners/HistoricoTonerModal"
 import { TONER_ESTADO_LABEL, type Toner, type TonerInput } from "@/types/toner"
 import { cn } from "@/lib/utils"
 
 export function ToniersPage() {
   const { data: toners, isLoading } = useToners()
   const { guardar, alternarAtivo, eliminar } = useTonerMutations()
+  const { user } = useAuth()
   const [pesquisa, setPesquisa] = useState("")
   const [modalAberto, setModalAberto] = useState(false)
   const [importarAberto, setImportarAberto] = useState(false)
   const [tonerEditar, setTonerEditar] = useState<Toner | null>(null)
+  const [tonerHistorico, setTonerHistorico] = useState<Toner | null>(null)
 
   const filtrados = useMemo(() => {
     const termo = pesquisa.trim().toLowerCase()
@@ -35,9 +39,9 @@ export function ToniersPage() {
     setModalAberto(true)
   }
 
-  function handleSubmit(input: TonerInput, imagem: File | null) {
+  function handleSubmit(input: TonerInput, imagem: File | null, empresaId: string | null) {
     guardar.mutate(
-      { id: tonerEditar?.id, input, imagem },
+      { id: tonerEditar?.id, input, imagem, empresaId, profileId: user?.id },
       { onSuccess: () => setModalAberto(false) }
     )
   }
@@ -168,6 +172,13 @@ export function ToniersPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button
+                        onClick={() => setTonerHistorico(toner)}
+                        className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Histórico"
+                      >
+                        <History className="size-4" />
+                      </button>
+                      <button
                         onClick={() => abrirEditar(toner)}
                         className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                         aria-label="Editar"
@@ -201,6 +212,11 @@ export function ToniersPage() {
       <ImportarTonersModal
         aberto={importarAberto}
         onClose={() => setImportarAberto(false)}
+      />
+
+      <HistoricoTonerModal
+        toner={tonerHistorico}
+        onClose={() => setTonerHistorico(null)}
       />
     </div>
   )

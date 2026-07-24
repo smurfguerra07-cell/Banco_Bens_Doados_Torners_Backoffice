@@ -23,8 +23,13 @@ export function useTonerMutations() {
     queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
 
   const guardar = useMutation({
-    mutationFn: (params: { id?: string; input: TonerInput; imagem?: File | null }) =>
-      guardarToner(params),
+    mutationFn: (params: {
+      id?: string
+      input: TonerInput
+      imagem?: File | null
+      empresaId?: string | null
+      profileId?: string
+    }) => guardarToner(params),
     onSuccess: (_data, variables) => {
       invalidate()
       toast.success(variables.id ? "Toner atualizado." : "Toner criado.")
@@ -61,7 +66,15 @@ export function useImportarToners() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (itens: TonerImportado[]) => importarToners(itens),
+    mutationFn: ({
+      itens,
+      empresaId,
+      profileId,
+    }: {
+      itens: TonerImportado[]
+      empresaId: string | null
+      profileId: string
+    }) => importarToners(itens, { empresaId, profileId }),
     onSuccess: ({ novos, atualizados }) => {
       queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
       toast.success(`Importação concluída: ${novos} novo(s), ${atualizados} atualizado(s).`)
