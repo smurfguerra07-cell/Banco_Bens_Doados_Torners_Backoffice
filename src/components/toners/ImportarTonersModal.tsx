@@ -43,6 +43,7 @@ export function ImportarTonersModal({
   const [ficheiro, setFicheiro] = useState<FicheiroParsed | null>(null)
   const [nomeFicheiro, setNomeFicheiro] = useState("")
   const [mapeamento, setMapeamento] = useState<Partial<Record<CampoToner, string>>>({})
+  const [valoresPadrao, setValoresPadrao] = useState<Partial<Record<CampoToner, string>>>({})
   const [aProcessar, setAProcessar] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   useBodyScrollLock(aberto)
@@ -59,8 +60,8 @@ export function ImportarTonersModal({
 
   const itensProcessados = useMemo<TonerImportado[]>(() => {
     if (passo !== "confirmar" || !ficheiro) return []
-    return normalizarLinhas(ficheiro.linhas, mapeamento, compatibilidadeConhecida)
-  }, [passo, ficheiro, mapeamento, compatibilidadeConhecida])
+    return normalizarLinhas(ficheiro.linhas, mapeamento, compatibilidadeConhecida, valoresPadrao)
+  }, [passo, ficheiro, mapeamento, compatibilidadeConhecida, valoresPadrao])
 
   const validos = itensProcessados.filter((i) => i.valido)
   const invalidos = itensProcessados.filter((i) => !i.valido)
@@ -73,7 +74,25 @@ export function ImportarTonersModal({
     setFicheiro(null)
     setNomeFicheiro("")
     setMapeamento({})
+    setValoresPadrao({})
     if (inputRef.current) inputRef.current.value = ""
+  }
+
+  function colunasDisponiveis(campoAtual: CampoToner): string[] {
+    const usadasPorOutros = new Set(
+      (Object.entries(mapeamento) as [CampoToner, string][])
+        .filter(([campo]) => campo !== campoAtual)
+        .map(([, coluna]) => coluna)
+    )
+    return (ficheiro?.headers ?? []).filter((h) => !usadasPorOutros.has(h))
+  }
+
+  function limparMapeamento(campo: CampoToner) {
+    setMapeamento((m) => {
+      const novo = { ...m }
+      delete novo[campo]
+      return novo
+    })
   }
 
   function fechar() {
@@ -103,7 +122,9 @@ export function ImportarTonersModal({
   }
 
   function avancarParaConfirmar() {
-    const emFalta = CAMPOS_OBRIGATORIOS.filter((c) => !mapeamento[c])
+    const emFalta = CAMPOS_OBRIGATORIOS.filter(
+      (c) => !mapeamento[c] && !valoresPadrao[c]?.trim()
+    )
     if (emFalta.length > 0) {
       toast.error(
         `Associa as colunas obrigatórias: ${emFalta.map((c) => CAMPO_LABEL[c]).join(", ")}`
@@ -182,35 +203,63 @@ export function ImportarTonersModal({
                   <p className="text-sm text-muted-foreground">
                     <span className="font-medium text-foreground">{nomeFicheiro}</span> —{" "}
                     {ficheiro.linhas.length} linha(s) encontrada(s). Associa cada campo à coluna
-                    correspondente no ficheiro (os campos foram sugeridos automaticamente).
+                    correspondente no ficheiro (os campos foram sugeridos automaticamente). Uma
+                    coluna já usada deixa de aparecer nos outros campos — clica no X para a
+                    libertar outra vez.
                   </p>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    {CAMPOS_TODOS.map((campo) => (
-                      <label key={campo} className="flex flex-col gap-1.5 text-sm">
-                        <span className="font-medium text-foreground">
-                          {CAMPO_LABEL[campo]}
-                          {CAMPOS_OBRIGATORIOS.includes(campo) && " *"}
-                        </span>
-                        <select
-                          value={mapeamento[campo] ?? ""}
-                          onChange={(e) =>
-                            setMapeamento((m) => ({
-                              ...m,
-                              [campo]: e.target.value || undefined,
-                            }))
-                          }
-                          className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
-                        >
-                          <option value="">— Não importar —</option>
-                          {ficheiro.headers.map((h) => (
-                            <option key={h} value={h}>
-                              {h}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ))}
+                  <div className="grid grid-cols-2 gap-4">
+                    {CAMPOS_TODOS.map((campo) => {
+                      const colunaMapeada = mapeamento[campo]
+                      return (
+                        <div key={campo} className="flex flex-col gap-1.5 text-sm">
+                          <span className="font-medium text-foreground">
+                            {CAMPO_LABEL[campo]}
+                            {CAMPOS_OBRIGATORIOS.includes(campo) && " *"}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              value={colunaMapeada ?? ""}
+                              onChange={(e) =>
+                                setMapeamento((m) => ({
+                                  ...m,
+                                  [campo]: e.target.value || undefined,
+                                }))
+                              }
+                              className="w-full flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                            >
+                              <option value="">— Coluna do ficheiro —</option>
+                              {colunasDisponiveis(campo).map((h) => (
+                                <option key={h} value={h}>
+                                  {h}
+                                </option>
+                              ))}
+                            </select>
+                            {colunaMapeada && (
+                              <button
+                                type="button"
+                                onClick={() => limparMapeamento(campo)}
+                                aria-label={`Remover mapeamento de ${CAMPO_LABEL[campo]}`}
+                                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-secondary/10 hover:text-secondary"
+                              >
+                                <X className="size-4" />
+                              </button>
+                            )}
+                          </div>
+                          {!colunaMapeada && (
+                            <input
+                              type="text"
+                              placeholder="Valor fixo p/ todas as linhas (ex: Armazém Bela Flor)"
+                              value={valoresPadrao[campo] ?? ""}
+                              onChange={(e) =>
+                                setValoresPadrao((v) => ({ ...v, [campo]: e.target.value }))
+                              }
+                              className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/70"
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
 
                   <div className="flex justify-end gap-2 pt-2">

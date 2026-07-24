@@ -186,12 +186,14 @@ function parseQuantidade(valor: string | undefined): number {
 export function normalizarLinhas(
   linhas: Record<string, string>[],
   mapeamento: Partial<Record<CampoToner, string>>,
-  compatibilidadeConhecida: Map<string, string[]>
+  compatibilidadeConhecida: Map<string, string[]>,
+  valoresPadrao: Partial<Record<CampoToner, string>> = {}
 ): TonerImportado[] {
   return linhas.map((linha) => {
     const val = (campo: CampoToner) => {
       const coluna = mapeamento[campo]
-      return coluna ? linha[coluna]?.trim() : undefined
+      const valorFicheiro = coluna ? linha[coluna]?.trim() : undefined
+      return valorFicheiro || valoresPadrao[campo]?.trim() || undefined
     }
 
     const marca = val("marca") ?? ""
