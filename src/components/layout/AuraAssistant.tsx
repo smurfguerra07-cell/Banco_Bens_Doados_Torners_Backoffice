@@ -13,13 +13,15 @@ import { gerarRespostaTicket } from "@/lib/aura/respostasTicket"
 import { cn } from "@/lib/utils"
 
 const SUGESTOES = [
-  "Quais toners tenho em stock?",
-  "Que toners estão em stock crítico?",
-  "Resume os pedidos pendentes",
-  "Qual foi o impacto ambiental?",
-  "Aumenta o stock do toner X em 10",
-  "Responde ao ticket #5",
+  "Ver stock atual de toners",
+  "Stock em nível crítico",
+  "Pedidos pendentes",
+  "Impacto ambiental",
+  "Contexto de um ticket",
 ]
+
+const MENSAGEM_ERRO_GENERICO =
+  "Algo correu mal — a ação não foi concluída e nenhum dado foi alterado. Podes tentar novamente ou contactar o suporte técnico se o problema persistir."
 
 interface Mensagem {
   id: string
@@ -31,7 +33,20 @@ const MENSAGEM_INICIAL: Mensagem = {
   id: "welcome",
   autor: "aura",
   texto:
-    "Olá. Sou a Aura — a tua assistente na Banco de Bens Doados. Pergunta-me sobre stock, pedidos ou impacto ambiental, ou pede-me para aumentar o stock de um toner, consultar um ticket ou responder a um ticket.",
+    "Olá, sou a Aura — a assistente do BackOffice do Banco de Bens Doados.\nConheço bem os stocks, pedidos, impacto ambiental e tickets de suporte. O que precisas?",
+}
+
+/** Renderiza **negrito** nas mensagens da Aura, sem precisar de um parser de markdown completo. */
+function renderComNegrito(texto: string) {
+  return texto.split(/\*\*(.+?)\*\*/g).map((parte, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="font-semibold text-foreground">
+        {parte}
+      </strong>
+    ) : (
+      parte
+    )
+  )
 }
 
 export function AuraCommandBar({ onOpen }: { onOpen: () => void }) {
@@ -97,15 +112,10 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
       try {
         await incrementarStockToner(acao.tonerId, acao.quantidade, user.id)
         await queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
-        adicionar(
-          "aura",
-          `✅ Stock de ${acao.tonerLabel} atualizado (+${acao.quantidade}). Fica registado no histórico deste toner.`
-        )
-      } catch (err) {
-        adicionar(
-          "aura",
-          `Não consegui atualizar o stock: ${err instanceof Error ? err.message : "erro desconhecido"}.`
-        )
+        const final = acao.quantidadeAtual + acao.quantidade
+        adicionar("aura", `Feito. O stock do **${acao.tonerLabel}** está agora em **${final}** unidades.`)
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
       } finally {
         setAProcessar(false)
       }
@@ -133,11 +143,8 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
             `Cliente: ${ticket.profiles?.full_name ?? "—"}\n\n` +
             (ultimas ? `Últimas mensagens:\n${ultimas}` : "Ainda sem mensagens neste ticket.")
         )
-      } catch (err) {
-        adicionar(
-          "aura",
-          `Não consegui consultar o ticket: ${err instanceof Error ? err.message : "erro desconhecido"}.`
-        )
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
       } finally {
         setAProcessar(false)
       }
@@ -164,13 +171,10 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
         })
         adicionar(
           "aura",
-          `Aqui está a resposta que vou enviar no ticket #${ticket.numero} — "${ticket.assunto}":\n\n${resposta}\n\nConfirmas o envio?`
+          `Aqui está a resposta que preparei para o ticket **#${ticket.numero}**:\n"${resposta}"\nQueres enviar isto ao cliente? Uma vez enviada, não é possível retirar. — **sim** ou **não**`
         )
-      } catch (err) {
-        adicionar(
-          "aura",
-          `Não consegui preparar a resposta: ${err instanceof Error ? err.message : "erro desconhecido"}.`
-        )
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
       } finally {
         setAProcessar(false)
       }
@@ -184,12 +188,9 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
         await enviarMensagem({ ticketId: acao.ticketId, autorId: user.id, conteudo: acao.conteudo })
         await queryClient.invalidateQueries({ queryKey: ["admin-tickets"] })
         await queryClient.invalidateQueries({ queryKey: ["ticket-mensagens", acao.ticketId] })
-        adicionar("aura", `✅ Resposta enviada no ticket #${acao.ticketNumero}.`)
-      } catch (err) {
-        adicionar(
-          "aura",
-          `Não consegui enviar a resposta: ${err instanceof Error ? err.message : "erro desconhecido"}.`
-        )
+        adicionar("aura", `Resposta enviada. O cliente do ticket **#${acao.ticketNumero}** recebeu a mensagem.`)
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
       } finally {
         setAProcessar(false)
       }
@@ -263,7 +264,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
                   </div>
                 ) : (
                   <div className="max-w-full whitespace-pre-line text-sm leading-relaxed text-foreground">
-                    {m.texto}
+                    {renderComNegrito(m.texto)}
                   </div>
                 )}
               </div>
@@ -332,7 +333,10 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
               <ArrowUp className="size-4" strokeWidth={2.5} />
             </button>
           </form>
-          <p className="mt-2 px-1 text-[10px] text-muted-foreground/70">
+          <p className="mt-2 px-1 text-[10px] italic text-muted-foreground/70">
+            A Aura trabalha melhor com perguntas diretas sobre stocks, pedidos e tickets.
+          </p>
+          <p className="mt-0.5 px-1 text-[10px] text-muted-foreground/50">
             Enter para enviar · Shift+Enter para nova linha
           </p>
         </div>

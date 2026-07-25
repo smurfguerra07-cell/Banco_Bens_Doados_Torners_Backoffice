@@ -16,10 +16,16 @@ const LIMITE_STOCK_BAIXO = 3
 const FATOR_CO2_KG_POR_TONER = 2.5
 
 export type AuraState =
-  | { fase: "idle" }
+  | { fase: "idle"; falhasSeguidas?: number }
   | { fase: "aguardar_toner"; quantidade: number }
   | { fase: "aguardar_quantidade"; tonerId: string; tonerLabel: string }
-  | { fase: "confirmar_aumento"; tonerId: string; tonerLabel: string; quantidade: number }
+  | {
+      fase: "confirmar_aumento"
+      tonerId: string
+      tonerLabel: string
+      quantidade: number
+      quantidadeAtual: number
+    }
   | { fase: "confirmar_resposta_ticket"; ticketId: string; ticketNumero: number; conteudo: string }
 
 export interface AuraContexto {
@@ -33,7 +39,13 @@ export interface AuraResultado {
   estado: AuraState
   /** Efeito a executar pelo componente (precisa de acesso à app real). */
   executar?:
-    | { tipo: "incrementar_stock"; tonerId: string; tonerLabel: string; quantidade: number }
+    | {
+        tipo: "incrementar_stock"
+        tonerId: string
+        tonerLabel: string
+        quantidade: number
+        quantidadeAtual: number
+      }
     | { tipo: "consultar_ticket"; numero: number }
     | { tipo: "preparar_resposta_ticket"; ticketId: string; ticketNumero: number }
     | { tipo: "responder_ticket"; ticketId: string; ticketNumero: number; conteudo: string }
@@ -47,6 +59,15 @@ function tonerLabel(t: { marca: string; modelo: string; referencia: string }) {
 
 function candidatos(toners: Toner[]): CandidatoToner[] {
   return toners.map((t) => ({ id: t.id, marca: t.marca, modelo: t.modelo, referencia: t.referencia }))
+}
+
+function quantidadeDoToner(tonerId: string, toners: Toner[]): number {
+  return toners.find((t) => t.id === tonerId)?.quantidade ?? 0
+}
+
+/** Mensagem de confirmação antes de qualquer alteração real de stock, sempre com o antes/depois. */
+function mensagemConfirmarAumento(nome: string, atual: number, quantidade: number): string {
+  return `Vou atualizar o stock do **${nome}** de **${atual}** para **${atual + quantidade}** unidades.\nEsta alteração fica registada imediatamente.\nConfirmas? — **sim** ou **não**`
 }
 
 /** Encontra o ticket a que a mensagem se refere: por número (prioridade) ou por assunto/quem abriu. */
@@ -144,13 +165,15 @@ export function processarMensagem(
         estado,
       }
     }
+    const atual = quantidadeDoToner(encontrado.toner.id, contexto.toners)
     return {
-      resposta: `Queres mesmo aumentar o stock de ${tonerLabel(encontrado.toner)} em ${estado.quantidade} unidade(s)?`,
+      resposta: mensagemConfirmarAumento(tonerLabel(encontrado.toner), atual, estado.quantidade),
       estado: {
         fase: "confirmar_aumento",
         tonerId: encontrado.toner.id,
         tonerLabel: tonerLabel(encontrado.toner),
         quantidade: estado.quantidade,
+        quantidadeAtual: atual,
       },
     }
   }
@@ -159,13 +182,15 @@ export function processarMensagem(
     if (!numero || numero <= 0) {
       return { resposta: "Quantas unidades queres adicionar? (só preciso de um número)", estado }
     }
+    const atual = quantidadeDoToner(estado.tonerId, contexto.toners)
     return {
-      resposta: `Queres mesmo aumentar o stock de ${estado.tonerLabel} em ${numero} unidade(s)?`,
+      resposta: mensagemConfirmarAumento(estado.tonerLabel, atual, numero),
       estado: {
         fase: "confirmar_aumento",
         tonerId: estado.tonerId,
         tonerLabel: estado.tonerLabel,
         quantidade: numero,
+        quantidadeAtual: atual,
       },
     }
   }
@@ -181,11 +206,12 @@ export function processarMensagem(
           tonerId: estado.tonerId,
           tonerLabel: estado.tonerLabel,
           quantidade: estado.quantidade,
+          quantidadeAtual: estado.quantidadeAtual,
         },
       }
     }
     return {
-      resposta: "Ok, não fiz nenhuma alteração.",
+      resposta: "Ação cancelada. Nada foi alterado.",
       estado: { fase: "idle" },
     }
   }
@@ -205,7 +231,7 @@ export function processarMensagem(
       }
     }
     return {
-      resposta: "Ok, não enviei nada.",
+      resposta: "Ação cancelada. Nada foi alterado.",
       estado: { fase: "idle" },
     }
   }
@@ -251,13 +277,15 @@ export function processarMensagem(
         },
       }
     }
+    const atual = quantidadeDoToner(encontrado.toner.id, contexto.toners)
     return {
-      resposta: `Queres mesmo aumentar o stock de ${tonerLabel(encontrado.toner)} em ${numero} unidade(s)?`,
+      resposta: mensagemConfirmarAumento(tonerLabel(encontrado.toner), atual, numero),
       estado: {
         fase: "confirmar_aumento",
         tonerId: encontrado.toner.id,
         tonerLabel: tonerLabel(encontrado.toner),
         quantidade: numero,
+        quantidadeAtual: atual,
       },
     }
   }
@@ -292,9 +320,16 @@ export function processarMensagem(
     return { resposta: "Tudo bem, fico por aqui.", estado: { fase: "idle" } }
   }
 
+  const falhasAnteriores = estado.falhasSeguidas ?? 0
+  if (falhasAnteriores >= 1) {
+    return {
+      resposta: "Ainda não sei responder a isso. Para este tipo de pedido, fala diretamente com a equipa técnica.",
+      estado: { fase: "idle", falhasSeguidas: 0 },
+    }
+  }
   return {
     resposta:
-      "Não percebi bem. Podes perguntar-me sobre: quais toners tenho em stock, stock crítico, pedidos pendentes, impacto ambiental, pedir para aumentar o stock de um toner, pedir o contexto de um ticket (ex: \"ticket #5\"), ou pedir para responder a um ticket (ex: \"responde ao ticket #5\").",
-    estado: { fase: "idle" },
+      "Isso está fora do meu campo de ação. Consigo ajudar com stocks, pedidos pendentes, impacto ambiental e tickets — queres tentar por aí?",
+    estado: { fase: "idle", falhasSeguidas: 1 },
   }
 }
