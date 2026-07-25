@@ -19,6 +19,7 @@ const VAZIO: TonerInput = {
   cor: "",
   observacoes: "",
   ativo: true,
+  video_url: "",
 }
 
 export function TonerFormModal({
@@ -57,6 +58,7 @@ export function TonerFormModal({
         cor: toner.cor ?? "",
         observacoes: toner.observacoes ?? "",
         ativo: toner.ativo,
+        video_url: toner.video_url ?? "",
       })
       setCompatibilidadeTexto(toner.compatibilidade.join(", "))
       setPreviewUrl(toner.toner_imagens?.[0]?.storage_path ?? null)
@@ -85,6 +87,7 @@ export function TonerFormModal({
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
+        video_url: form.video_url?.trim() || null,
       },
       imagem,
       empresaId || null
@@ -301,6 +304,22 @@ export function TonerFormModal({
                     }
                     className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
                   />
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">
+                    Vídeo explicativo (opcional)
+                  </span>
+                  <input
+                    type="url"
+                    value={form.video_url ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
+                    placeholder="https://youtube.com/..."
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    A Aura envia este link quando responde a tickets sobre este toner.
+                  </span>
                 </label>
 
                 <label className="flex items-center gap-2 text-sm">

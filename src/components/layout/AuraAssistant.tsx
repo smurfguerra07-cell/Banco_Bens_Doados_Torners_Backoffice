@@ -4,10 +4,12 @@ import { ArrowUp, Sparkles, X } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
+import { useTickets } from "@/hooks/useTickets"
 import { incrementarStockToner } from "@/services/toners"
-import { fetchMensagens, fetchTickets } from "@/services/tickets"
+import { enviarMensagem, fetchMensagens, fetchTickets } from "@/services/tickets"
 import { TICKET_CATEGORIA_LABEL, TICKET_ESTADO_LABEL } from "@/types/ticket"
 import { processarMensagem, type AuraState } from "@/lib/aura/conversar"
+import { gerarRespostaTicket } from "@/lib/aura/respostasTicket"
 import { cn } from "@/lib/utils"
 
 const SUGESTOES = [
@@ -16,6 +18,7 @@ const SUGESTOES = [
   "Resume os pedidos pendentes",
   "Qual foi o impacto ambiental?",
   "Aumenta o stock do toner X em 10",
+  "Responde ao ticket #5",
 ]
 
 interface Mensagem {
@@ -28,7 +31,7 @@ const MENSAGEM_INICIAL: Mensagem = {
   id: "welcome",
   autor: "aura",
   texto:
-    "Olá. Sou a Aura — a tua assistente na Banco de Bens Doados. Pergunta-me sobre stock, pedidos ou impacto ambiental, ou pede-me para aumentar o stock de um toner ou consultar um ticket.",
+    "Olá. Sou a Aura — a tua assistente na Banco de Bens Doados. Pergunta-me sobre stock, pedidos ou impacto ambiental, ou pede-me para aumentar o stock de um toner, consultar um ticket ou responder a um ticket.",
 }
 
 export function AuraCommandBar({ onOpen }: { onOpen: () => void }) {
@@ -55,6 +58,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
   const { user } = useAuth()
   const { data: toners } = useToners()
   const { data: pedidos } = usePedidos()
+  const { data: tickets } = useTickets()
   const queryClient = useQueryClient()
 
   const [mensagens, setMensagens] = useState<Mensagem[]>([MENSAGEM_INICIAL])
@@ -137,6 +141,58 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
       } finally {
         setAProcessar(false)
       }
+      return
+    }
+
+    if (acao.tipo === "preparar_resposta_ticket") {
+      setAProcessar(true)
+      try {
+        const listaTickets = await fetchTickets()
+        const ticket = listaTickets.find((t) => t.id === acao.ticketId)
+        if (!ticket) {
+          adicionar("aura", `Não encontrei o ticket #${acao.ticketNumero}.`)
+          return
+        }
+        const mensagensTicket = await fetchMensagens(ticket.id)
+        const mensagensCliente = mensagensTicket.filter((m) => m.autor_id === ticket.profile_id)
+        const resposta = gerarRespostaTicket(ticket, mensagensCliente, toners ?? [])
+        setEstado({
+          fase: "confirmar_resposta_ticket",
+          ticketId: ticket.id,
+          ticketNumero: ticket.numero,
+          conteudo: resposta,
+        })
+        adicionar(
+          "aura",
+          `Aqui está a resposta que vou enviar no ticket #${ticket.numero} — "${ticket.assunto}":\n\n${resposta}\n\nConfirmas o envio?`
+        )
+      } catch (err) {
+        adicionar(
+          "aura",
+          `Não consegui preparar a resposta: ${err instanceof Error ? err.message : "erro desconhecido"}.`
+        )
+      } finally {
+        setAProcessar(false)
+      }
+      return
+    }
+
+    if (acao.tipo === "responder_ticket") {
+      if (!user) return
+      setAProcessar(true)
+      try {
+        await enviarMensagem({ ticketId: acao.ticketId, autorId: user.id, conteudo: acao.conteudo })
+        await queryClient.invalidateQueries({ queryKey: ["admin-tickets"] })
+        await queryClient.invalidateQueries({ queryKey: ["ticket-mensagens", acao.ticketId] })
+        adicionar("aura", `✅ Resposta enviada no ticket #${acao.ticketNumero}.`)
+      } catch (err) {
+        adicionar(
+          "aura",
+          `Não consegui enviar a resposta: ${err instanceof Error ? err.message : "erro desconhecido"}.`
+        )
+      } finally {
+        setAProcessar(false)
+      }
     }
   }
 
@@ -149,6 +205,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
     const resultado = processarMensagem(limpo, estado, {
       toners: toners ?? [],
       pedidos: pedidos ?? [],
+      tickets: tickets ?? [],
     })
     setEstado(resultado.estado)
     adicionar("aura", resultado.resposta)

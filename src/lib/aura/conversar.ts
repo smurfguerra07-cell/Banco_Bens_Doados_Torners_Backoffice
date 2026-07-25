@@ -1,5 +1,15 @@
-import { detetarIntent, encontrarToner, extrairNumero, mencionaTicket, type CandidatoToner } from "./nlu"
+import {
+  detetarIntent,
+  encontrarTicket,
+  encontrarToner,
+  extrairNumero,
+  mencionaTicket,
+  pedeRespostaTicket,
+  type CandidatoTicket,
+  type CandidatoToner,
+} from "./nlu"
 import type { Pedido, PedidoEstado } from "@/types/pedido"
+import type { Ticket } from "@/types/ticket"
 import type { Toner } from "@/types/toner"
 
 const LIMITE_STOCK_BAIXO = 3
@@ -10,10 +20,12 @@ export type AuraState =
   | { fase: "aguardar_toner"; quantidade: number }
   | { fase: "aguardar_quantidade"; tonerId: string; tonerLabel: string }
   | { fase: "confirmar_aumento"; tonerId: string; tonerLabel: string; quantidade: number }
+  | { fase: "confirmar_resposta_ticket"; ticketId: string; ticketNumero: number; conteudo: string }
 
 export interface AuraContexto {
   toners: Toner[]
   pedidos: Pedido[]
+  tickets: Ticket[]
 }
 
 export interface AuraResultado {
@@ -23,6 +35,8 @@ export interface AuraResultado {
   executar?:
     | { tipo: "incrementar_stock"; tonerId: string; tonerLabel: string; quantidade: number }
     | { tipo: "consultar_ticket"; numero: number }
+    | { tipo: "preparar_resposta_ticket"; ticketId: string; ticketNumero: number }
+    | { tipo: "responder_ticket"; ticketId: string; ticketNumero: number; conteudo: string }
 }
 
 const ESTADOS_PENDENTES: PedidoEstado[] = ["recebido", "em_analise"]
@@ -33,6 +47,23 @@ function tonerLabel(t: { marca: string; modelo: string; referencia: string }) {
 
 function candidatos(toners: Toner[]): CandidatoToner[] {
   return toners.map((t) => ({ id: t.id, marca: t.marca, modelo: t.modelo, referencia: t.referencia }))
+}
+
+/** Encontra o ticket a que a mensagem se refere: por número (prioridade) ou por assunto/quem abriu. */
+function encontrarTicketAlvo(mensagem: string, numero: number | null, tickets: Ticket[]): Ticket | null {
+  if (numero) {
+    const porNumero = tickets.find((t) => t.numero === numero)
+    if (porNumero) return porNumero
+  }
+  const candidatosTicket: CandidatoTicket[] = tickets.map((t) => ({
+    id: t.id,
+    numero: t.numero,
+    assunto: t.assunto,
+    autor: t.profiles?.full_name ?? null,
+  }))
+  const achado = encontrarTicket(mensagem, candidatosTicket)
+  if (!achado) return null
+  return tickets.find((t) => t.id === achado.ticket.id) ?? null
 }
 
 function respostaStockCritico(toners: Toner[]): string {
@@ -159,6 +190,26 @@ export function processarMensagem(
     }
   }
 
+  if (estado.fase === "confirmar_resposta_ticket") {
+    const intent = detetarIntent(mensagem)
+    if (intent.id === "confirmar") {
+      return {
+        resposta: `A enviar a resposta no ticket #${estado.ticketNumero}…`,
+        estado: { fase: "idle" },
+        executar: {
+          tipo: "responder_ticket",
+          ticketId: estado.ticketId,
+          ticketNumero: estado.ticketNumero,
+          conteudo: estado.conteudo,
+        },
+      }
+    }
+    return {
+      resposta: "Ok, não enviei nada.",
+      estado: { fase: "idle" },
+    }
+  }
+
   // Sem pedido em curso — deteta a intenção normalmente.
   const intent = detetarIntent(mensagem)
 
@@ -211,6 +262,21 @@ export function processarMensagem(
     }
   }
 
+  if (pedeRespostaTicket(mensagem)) {
+    const alvo = encontrarTicketAlvo(mensagem, numero, contexto.tickets)
+    if (!alvo) {
+      return {
+        resposta: "A que ticket te referes? Diz-me o número, o título ou o nome de quem o abriu.",
+        estado: { fase: "idle" },
+      }
+    }
+    return {
+      resposta: `A analisar o ticket #${alvo.numero}…`,
+      estado: { fase: "idle" },
+      executar: { tipo: "preparar_resposta_ticket", ticketId: alvo.id, ticketNumero: alvo.numero },
+    }
+  }
+
   if (intent.id === "consultar_ticket" || (numero !== null && mencionaTicket(mensagem))) {
     if (!numero) {
       return { resposta: "Qual é o número do ticket? (ex: \"ticket #5\")", estado: { fase: "idle" } }
@@ -228,7 +294,7 @@ export function processarMensagem(
 
   return {
     resposta:
-      "Não percebi bem. Podes perguntar-me sobre: quais toners tenho em stock, stock crítico, pedidos pendentes, impacto ambiental, pedir para aumentar o stock de um toner, ou pedir o contexto de um ticket (ex: \"ticket #5\").",
+      "Não percebi bem. Podes perguntar-me sobre: quais toners tenho em stock, stock crítico, pedidos pendentes, impacto ambiental, pedir para aumentar o stock de um toner, pedir o contexto de um ticket (ex: \"ticket #5\"), ou pedir para responder a um ticket (ex: \"responde ao ticket #5\").",
     estado: { fase: "idle" },
   }
 }

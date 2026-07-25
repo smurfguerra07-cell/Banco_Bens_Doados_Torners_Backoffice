@@ -95,7 +95,7 @@ function pareceCom(token: string, alvo: string): boolean {
   return distancia(token, alvo) <= maxDistancia
 }
 
-function algumParece(msgTokens: Set<string>, alvo: string): boolean {
+export function algumParece(msgTokens: Set<string>, alvo: string): boolean {
   for (const t of msgTokens) {
     if (pareceCom(t, alvo)) return true
   }
@@ -263,6 +263,47 @@ export function detetarIntent(mensagem: string): DeteccaoIntent {
 export function mencionaTicket(mensagem: string): boolean {
   const msgTokens = new Set(tokens(mensagem))
   return algumParece(msgTokens, "ticket") || algumParece(msgTokens, "tickets")
+}
+
+const VERBOS_RESPOSTA_TICKET = ["responde", "responder", "respondas", "resposta", "explica", "explicar"]
+
+/** Verifica se a mensagem pede à Aura para responder/explicar um ticket (não só consultar). */
+export function pedeRespostaTicket(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  const temVerboResposta = VERBOS_RESPOSTA_TICKET.some((v) => algumParece(msgTokens, v))
+  return temVerboResposta && mencionaTicket(mensagem)
+}
+
+export interface CandidatoTicket {
+  id: string
+  numero: number
+  assunto: string
+  autor: string | null
+}
+
+/**
+ * Encontra o ticket mais parecido com o que a mensagem descreve, pelo
+ * assunto ou pelo nome de quem o abriu — usado quando o utilizador não
+ * indica o número do ticket.
+ */
+export function encontrarTicket(
+  mensagem: string,
+  tickets: CandidatoTicket[]
+): { ticket: CandidatoTicket; score: number } | null {
+  const msgTokens = new Set(tokens(mensagem))
+  if (tickets.length === 0) return null
+
+  let melhor: { ticket: CandidatoTicket; score: number } | null = null
+
+  for (const ticket of tickets) {
+    const rotuloTokens = [...new Set(tokens(`${ticket.assunto} ${ticket.autor ?? ""}`))]
+    if (rotuloTokens.length === 0) continue
+    const encontrados = rotuloTokens.filter((t) => algumParece(msgTokens, t)).length
+    const score = encontrados / rotuloTokens.length
+    if (!melhor || score > melhor.score) melhor = { ticket, score }
+  }
+
+  return melhor && melhor.score >= 0.34 ? melhor : null
 }
 
 /** Extrai o primeiro número inteiro presente na mensagem (quantidade, nº de ticket, etc.). */
