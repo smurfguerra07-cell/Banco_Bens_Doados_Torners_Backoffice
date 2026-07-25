@@ -11,6 +11,21 @@ export async function fetchMovimentosToner(tonerId: string): Promise<MovimentoSt
   return data as unknown as MovimentoStock[]
 }
 
+/**
+ * Movimentos de entrada (doações) com empresa associada, de todos os
+ * toners — usado pela Aura para responder sobre histórico de doadores.
+ */
+export async function fetchMovimentosDoacao(): Promise<MovimentoStock[]> {
+  const { data, error } = await supabase
+    .from("movimentos_stock")
+    .select("*, empresas ( nome ), toners ( marca, modelo, referencia )")
+    .eq("tipo", "entrada")
+    .not("empresa_id", "is", null)
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return data as unknown as MovimentoStock[]
+}
+
 export async function registarMovimentoEntrada(params: {
   tonerId: string
   quantidade: number

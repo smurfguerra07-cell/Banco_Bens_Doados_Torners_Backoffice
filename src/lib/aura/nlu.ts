@@ -525,3 +525,28 @@ export function encontrarEmpresa(
 
   return melhor && melhor.score >= 0.5 ? melhor : null
 }
+
+// ---------- Histórico de doadores e beneficiários ----------
+
+const TERMOS_DOADORES = ["doou", "doaram", "doador", "doadores"]
+
+/** Pergunta sobre quem doou toners (histórico de doadores), não sobre registar uma nova doação. */
+export function pedeHistoricoDoadores(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return TERMOS_DOADORES.some((t) => algumParece(msgTokens, t))
+}
+
+const TERMOS_BENEFICIARIOS = [
+  "receberam",
+  "recebeu",
+  "beneficiaria",
+  "beneficiarias",
+  "beneficiario",
+  "beneficiarios",
+]
+
+/** Pergunta sobre que instituições receberam toners (histórico de beneficiários). */
+export function pedeHistoricoBeneficiarios(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return TERMOS_BENEFICIARIOS.some((t) => algumParece(msgTokens, t))
+}

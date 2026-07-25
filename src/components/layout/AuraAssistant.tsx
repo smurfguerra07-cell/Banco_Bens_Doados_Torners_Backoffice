@@ -6,6 +6,7 @@ import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
 import { useEmpresas } from "@/hooks/useEmpresas"
+import { useMovimentosDoacao } from "@/hooks/useMovimentos"
 import { ajustarQuantidadeToner, incrementarStockToner, registarDoacaoToner } from "@/services/toners"
 import { enviarMensagem, fetchMensagens, fetchTickets } from "@/services/tickets"
 import { atualizarEstadoPedido } from "@/services/pedidos"
@@ -81,6 +82,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
   const { data: pedidos } = usePedidos()
   const { data: tickets } = useTickets()
   const { data: empresas } = useEmpresas()
+  const { data: movimentosDoacao } = useMovimentosDoacao()
   const queryClient = useQueryClient()
 
   const [mensagens, setMensagens] = useState<Mensagem[]>([MENSAGEM_INICIAL])
@@ -299,6 +301,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
       pedidos: pedidos ?? [],
       tickets: tickets ?? [],
       empresas: empresas ?? [],
+      movimentosDoacao: movimentosDoacao ?? [],
     })
     setEstado(resultado.estado)
     adicionar("aura", resultado.resposta)

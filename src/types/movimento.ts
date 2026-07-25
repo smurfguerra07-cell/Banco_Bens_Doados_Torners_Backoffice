@@ -19,4 +19,5 @@ export interface MovimentoStock {
   empresas: { nome: string } | null
   profiles: { full_name: string } | null
   pedidos: { numero: number } | null
+  toners?: { marca: string; modelo: string; referencia: string } | null
 }

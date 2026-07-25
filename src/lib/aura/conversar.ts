@@ -10,6 +10,8 @@ import {
   mencionaTicket,
   pedeAvancarPedido,
   pedeContagem,
+  pedeHistoricoBeneficiarios,
+  pedeHistoricoDoadores,
   pedeRegistarDoacao,
   pedeRelatorio,
   pedeStockDeToner,
@@ -30,7 +32,9 @@ import {
   TIPO_RELATORIO_LABEL,
   type TipoRelatorioAura,
 } from "./relatorios"
+import { respostaHistoricoBeneficiarios, respostaHistoricoDoadores } from "./historico"
 import type { Empresa } from "@/types/empresa"
+import type { MovimentoStock } from "@/types/movimento"
 import type { Pedido, PedidoEstado } from "@/types/pedido"
 import { PROXIMO_ESTADO, PEDIDO_ESTADO_LABEL } from "@/types/pedido"
 import type { Ticket } from "@/types/ticket"
@@ -100,6 +104,7 @@ export interface AuraContexto {
   pedidos: Pedido[]
   tickets: Ticket[]
   empresas: Empresa[]
+  movimentosDoacao: MovimentoStock[]
 }
 
 export interface AuraResultado {
@@ -687,6 +692,23 @@ export function processarMensagem(
     return {
       resposta: `Vamos começar a contagem semanal (${ativos.length} toner(s)).\n\n[1/${ativos.length}] ${tonerLabel(primeiro)}: tenho registado **${primeiro.quantidade}** unidade(s). Está correto? Confirma com "sim" ou diz o número real.`,
       estado: { fase: "contagem", tonerIds: ativos.map((t) => t.id), indice: 0, confirmados: 0, corrigidos: 0 },
+    }
+  }
+
+  // Histórico de doadores/beneficiários — checado por palavra-chave, não
+  // por pontuação, para não colidir com "registar doação" (verbo "doou"
+  // é uma pergunta, "doação" é uma ação a iniciar).
+  if (pedeHistoricoDoadores(mensagem)) {
+    return {
+      resposta: respostaHistoricoDoadores(mensagem, contexto.movimentosDoacao, contexto.toners, contexto.empresas),
+      estado: comMemoria(estado, {}),
+    }
+  }
+
+  if (pedeHistoricoBeneficiarios(mensagem)) {
+    return {
+      resposta: respostaHistoricoBeneficiarios(mensagem, contexto.pedidos),
+      estado: comMemoria(estado, {}),
     }
   }
 
