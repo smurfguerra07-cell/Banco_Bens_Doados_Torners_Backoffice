@@ -570,3 +570,24 @@ export function pedeBriefing(mensagem: string): boolean {
   const msgTokens = new Set(tokens(mensagem))
   return algumParece(msgTokens, "briefing")
 }
+
+// ---------- Alertas configuráveis ----------
+
+const VERBOS_ALERTA = ["avisa", "avisar", "alerta", "alertar", "notifica", "notificar"]
+
+/** Pede para criar um alerta de stock para um toner. */
+export function pedeCriarAlerta(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return VERBOS_ALERTA.some((v) => algumParece(msgTokens, v))
+}
+
+/**
+ * Extrai o limite de um alerta de stock (ex: "menos de 5 unidades",
+ * "abaixo de 5") — usa um padrão explícito, e não o primeiro número
+ * qualquer da frase, para não confundir com números que façam parte
+ * do nome do toner (ex: "HP 85A").
+ */
+export function extrairLimiteAlerta(mensagem: string): number | null {
+  const match = mensagem.match(/(?:menos de|abaixo de|inferior a)\s*(\d+)/i)
+  return match ? parseInt(match[1], 10) : null
+}

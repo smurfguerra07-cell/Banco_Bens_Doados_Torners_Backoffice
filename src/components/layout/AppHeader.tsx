@@ -1,10 +1,11 @@
 import { useState } from "react"
 import { Link } from "react-router"
 import { AnimatePresence, motion } from "framer-motion"
-import { Bell, ClipboardList, MessageCircle, Package } from "lucide-react"
+import { Bell, BellRing, ClipboardList, MessageCircle, Package } from "lucide-react"
 import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
+import { useAlertas } from "@/hooks/useAlertas"
 import { AuraAssistantPanel, AuraCommandBar } from "@/components/layout/AuraAssistant"
 
 const LIMITE_STOCK_BAIXO = 3
@@ -13,6 +14,7 @@ export function AppHeader() {
   const { data: toners } = useToners()
   const { data: pedidos } = usePedidos()
   const { data: tickets } = useTickets()
+  const { data: alertas } = useAlertas()
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [notifAberta, setNotifAberta] = useState(false)
 
@@ -23,7 +25,12 @@ export function AppHeader() {
       (t) => t.ativo && t.quantidade - t.quantidade_reservada <= LIMITE_STOCK_BAIXO
     ) ?? []
   const ticketsPorResponder = tickets?.filter((t) => t.estado === "aberto") ?? []
-  const totalNotificacoes = pedidosPendentes.length + stockBaixo.length + ticketsPorResponder.length
+  const alertasDisparados = (alertas ?? []).filter((a) => {
+    const toner = toners?.find((t) => t.id === a.toner_id)
+    return toner && toner.quantidade - toner.quantidade_reservada <= a.limite
+  })
+  const totalNotificacoes =
+    pedidosPendentes.length + stockBaixo.length + ticketsPorResponder.length + alertasDisparados.length
 
   return (
     <>
@@ -117,6 +124,28 @@ export function AppHeader() {
                         <br />
                         <span className="text-xs text-muted-foreground">
                           À espera de resposta da equipa
+                        </span>
+                      </span>
+                    </Link>
+                  )}
+                  {alertasDisparados.length > 0 && (
+                    <Link
+                      to="/toners"
+                      onClick={() => setNotifAberta(false)}
+                      className="flex items-start gap-2.5 px-4 py-2.5 text-sm transition hover:bg-muted"
+                    >
+                      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                        <BellRing className="size-3.5" />
+                      </span>
+                      <span>
+                        <span className="font-medium text-foreground">
+                          {alertasDisparados.length} alerta(s) da Aura ativo(s)
+                        </span>
+                        <br />
+                        <span className="text-xs text-muted-foreground">
+                          {alertasDisparados
+                            .map((a) => (a.toners ? `${a.toners.marca} ${a.toners.modelo}` : "toner"))
+                            .join(", ")}
                         </span>
                       </span>
                     </Link>

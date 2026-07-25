@@ -7,6 +7,7 @@ import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
 import { useEmpresas } from "@/hooks/useEmpresas"
 import { useMovimentosDoacao } from "@/hooks/useMovimentos"
+import { criarAlerta } from "@/services/alertas"
 import { ajustarQuantidadeToner, incrementarStockToner, registarDoacaoToner } from "@/services/toners"
 import { enviarMensagem, fetchMensagens, fetchTickets } from "@/services/tickets"
 import { atualizarEstadoPedido } from "@/services/pedidos"
@@ -347,6 +348,24 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
           nome: `briefing-${new Date().toISOString().slice(0, 10)}.pdf`,
           url,
         })
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
+      } finally {
+        setAProcessar(false)
+      }
+      return
+    }
+
+    if (acao.tipo === "criar_alerta") {
+      if (!user) return
+      setAProcessar(true)
+      try {
+        await criarAlerta({ tonerId: acao.tonerId, limite: acao.limite, criadoPor: user.id })
+        await queryClient.invalidateQueries({ queryKey: ["aura-alertas"] })
+        adicionar(
+          "aura",
+          `Alerta ativo. Vais ver um aviso no sino de notificações quando o **${acao.tonerLabel}** chegar a **${acao.limite}** unidade(s) ou menos.`
+        )
       } catch {
         adicionar("aura", MENSAGEM_ERRO_GENERICO)
       } finally {

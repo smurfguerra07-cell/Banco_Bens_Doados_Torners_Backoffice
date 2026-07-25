@@ -11,6 +11,7 @@ import {
   pedeAvancarPedido,
   pedeBriefing,
   pedeContagem,
+  pedeCriarAlerta,
   pedeEtiqueta,
   pedeFichaDoacao,
   pedeHistoricoBeneficiarios,
@@ -18,6 +19,7 @@ import {
   pedeRegistarDoacao,
   pedeRelatorio,
   pedeStockDeToner,
+  extrairLimiteAlerta,
   temVerboResposta,
   tokens,
   algumParece,
@@ -108,6 +110,8 @@ export type AuraState =
     }
   // ---- Fluxo guiado: contagem semanal ----
   | { fase: "contagem"; tonerIds: string[]; indice: number; confirmados: number; corrigidos: number }
+  // ---- Alerta configurável de stock ----
+  | { fase: "confirmar_alerta"; tonerId: string; tonerLabel: string; limite: number }
 
 export interface AuraContexto {
   toners: Toner[]
@@ -161,6 +165,7 @@ export interface AuraResultado {
       }
     | { tipo: "gerar_etiqueta"; tonerId: string; tonerLabel: string }
     | { tipo: "gerar_briefing" }
+    | { tipo: "criar_alerta"; tonerId: string; tonerLabel: string; limite: number }
 }
 
 const ESTADOS_PENDENTES: PedidoEstado[] = ["recebido", "em_analise"]
@@ -612,6 +617,19 @@ export function processarMensagem(
     }
   }
 
+  // ---- Alerta configurável de stock ----
+  if (estado.fase === "confirmar_alerta") {
+    const intent = detetarIntent(mensagem)
+    if (intent.id === "confirmar") {
+      return {
+        resposta: `A ativar o alerta para ${estado.tonerLabel}…`,
+        estado: { fase: "idle" },
+        executar: { tipo: "criar_alerta", tonerId: estado.tonerId, tonerLabel: estado.tonerLabel, limite: estado.limite },
+      }
+    }
+    return { resposta: "Ação cancelada. Nada foi alterado.", estado: { fase: "idle" } }
+  }
+
   // Sem pedido em curso — deteta a intenção normalmente.
   const intent = detetarIntent(mensagem)
 
@@ -686,6 +704,27 @@ export function processarMensagem(
       resposta: "A gerar o briefing diário…",
       estado: comMemoria(estado, {}),
       executar: { tipo: "gerar_briefing" },
+    }
+  }
+
+  // Criar um alerta de stock personalizado para um toner.
+  if (pedeCriarAlerta(mensagem)) {
+    const encontrado = encontrarToner(mensagem, candidatos(contexto.toners))
+    if (!encontrado || encontrado.score < 0.34) {
+      return {
+        resposta: "Para que toner queres o alerta? Diz-me a marca, o modelo ou a referência.",
+        estado: comMemoria(estado, {}),
+      }
+    }
+    const limite = extrairLimiteAlerta(mensagem) ?? LIMITE_STOCK_BAIXO
+    return {
+      resposta: `Vou avisar-te quando o **${tonerLabel(encontrado.toner)}** tiver **${limite}** unidade(s) ou menos em stock. Confirmas? — **sim** ou **não**`,
+      estado: {
+        fase: "confirmar_alerta",
+        tonerId: encontrado.toner.id,
+        tonerLabel: tonerLabel(encontrado.toner),
+        limite,
+      },
     }
   }
 
