@@ -27,7 +27,7 @@ export function AppHeader() {
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border px-6">
+      <header className="flex h-20 shrink-0 items-center gap-4 border-b border-border px-6">
         <AuraCommandBar onOpen={() => setAssistantOpen(true)} />
 
         <div className="relative ml-auto">

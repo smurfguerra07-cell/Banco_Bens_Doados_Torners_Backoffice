@@ -61,8 +61,8 @@ export function AppSidebar() {
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-card">
-      <Link to="/" className="flex h-16 items-center gap-2 border-b border-border px-5">
-        <img src={logo} alt="Banco de Bens Doados" className="h-9 w-auto" />
+      <Link to="/" className="flex h-20 items-center gap-2 border-b border-border px-5">
+        <img src={logo} alt="Banco de Bens Doados" className="h-14 w-auto" />
       </Link>
 
       <nav className="flex-1 space-y-0.5 px-3 py-4">
