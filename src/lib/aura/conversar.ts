@@ -1,11 +1,15 @@
 import {
   detetarIntent,
+  encontrarMarca,
   encontrarTicket,
   encontrarToner,
+  extrairConteudoDitado,
   extrairNumero,
   mencionaTicket,
-  pedeRespostaTicket,
   pedeStockDeToner,
+  temVerboResposta,
+  tokens,
+  algumParece,
   type CandidatoTicket,
   type CandidatoToner,
 } from "./nlu"
@@ -17,7 +21,12 @@ const LIMITE_STOCK_BAIXO = 3
 const FATOR_CO2_KG_POR_TONER = 2.5
 
 export type AuraState =
-  | { fase: "idle"; falhasSeguidas?: number }
+  | {
+      fase: "idle"
+      falhasSeguidas?: number
+      ultimaMarca?: string
+      ultimoTicket?: { id: string; numero: number }
+    }
   | { fase: "aguardar_toner"; quantidade: number }
   | { fase: "aguardar_quantidade"; tonerId: string; tonerLabel: string }
   | {
@@ -66,6 +75,36 @@ function quantidadeDoToner(tonerId: string, toners: Toner[]): number {
   return toners.find((t) => t.id === tonerId)?.quantidade ?? 0
 }
 
+type IdleState = Extract<AuraState, { fase: "idle" }>
+
+/**
+ * Devolve o novo estado "idle", preservando a memória da sessão
+ * (última marca filtrada, último ticket referido) exceto onde o
+ * chamador explicitamente indica um novo valor (incluindo `undefined`
+ * para limpar essa memória).
+ */
+function comMemoria(base: IdleState, patch: Partial<Omit<IdleState, "fase">>): AuraState {
+  return {
+    fase: "idle",
+    ultimaMarca: "ultimaMarca" in patch ? patch.ultimaMarca : base.ultimaMarca,
+    ultimoTicket: "ultimoTicket" in patch ? patch.ultimoTicket : base.ultimoTicket,
+    falhasSeguidas: "falhasSeguidas" in patch ? patch.falhasSeguidas : undefined,
+  }
+}
+
+/**
+ * Decide a marca a usar num filtro de stock: marca explícita na
+ * mensagem > pedido explícito de "todos" (limpa o filtro) > marca
+ * lembrada de uma pergunta anterior na mesma sessão.
+ */
+function marcaParaResposta(mensagem: string, toners: Toner[], memoria?: string): string | undefined {
+  const encontrada = encontrarMarca(mensagem, toners.map((t) => t.marca))
+  if (encontrada) return encontrada
+  const msgTokens = new Set(tokens(mensagem))
+  if (algumParece(msgTokens, "todos") || algumParece(msgTokens, "todas")) return undefined
+  return memoria
+}
+
 /** Mensagem de confirmação antes de qualquer alteração real de stock, sempre com o antes/depois. */
 function mensagemConfirmarAumento(nome: string, atual: number, quantidade: number): string {
   return `Vou atualizar o stock do **${nome}** de **${atual}** para **${atual + quantidade}** unidades.\nEsta alteração fica registada imediatamente.\nConfirmas? — **sim** ou **não**`
@@ -88,23 +127,33 @@ function encontrarTicketAlvo(mensagem: string, numero: number | null, tickets: T
   return tickets.find((t) => t.id === achado.ticket.id) ?? null
 }
 
-function respostaStockCritico(toners: Toner[]): string {
+function respostaStockCritico(toners: Toner[], marcaFiltro?: string): string {
   const criticos = toners.filter(
-    (t) => t.ativo && t.quantidade - t.quantidade_reservada <= LIMITE_STOCK_BAIXO
+    (t) =>
+      t.ativo &&
+      t.quantidade - t.quantidade_reservada <= LIMITE_STOCK_BAIXO &&
+      (!marcaFiltro || t.marca.toLowerCase() === marcaFiltro.toLowerCase())
   )
-  if (criticos.length === 0) return "Neste momento não há nenhum toner em stock crítico. 👍"
+  const sufixoMarca = marcaFiltro ? ` da marca ${marcaFiltro}` : ""
+  if (criticos.length === 0) return `Neste momento não há nenhum toner${sufixoMarca} em stock crítico. 👍`
   const lista = criticos
     .map((t) => `• ${t.marca} ${t.modelo} — ${t.quantidade - t.quantidade_reservada} unidade(s)`)
     .join("\n")
-  return `Há ${criticos.length} toner(s) em stock crítico (≤ ${LIMITE_STOCK_BAIXO} unidades):\n\n${lista}`
+  return `Há ${criticos.length} toner(s)${sufixoMarca} em stock crítico (≤ ${LIMITE_STOCK_BAIXO} unidades):\n\n${lista}`
 }
 
-function respostaListaStock(toners: Toner[]): string {
-  const ativos = toners.filter((t) => t.ativo)
+function respostaListaStock(toners: Toner[], marcaFiltro?: string): string {
+  const ativos = toners.filter(
+    (t) => t.ativo && (!marcaFiltro || t.marca.toLowerCase() === marcaFiltro.toLowerCase())
+  )
   const comStock = ativos.filter((t) => t.quantidade - t.quantidade_reservada > 0)
   const semStock = ativos.filter((t) => t.quantidade - t.quantidade_reservada <= 0)
 
-  if (ativos.length === 0) return "Ainda não há toners ativos registados."
+  if (ativos.length === 0) {
+    return marcaFiltro
+      ? `Não encontrei toners da marca ${marcaFiltro}.`
+      : "Ainda não há toners ativos registados."
+  }
 
   const partes: string[] = []
   if (comStock.length > 0) {
@@ -247,23 +296,31 @@ export function processarMensagem(
   const intent = detetarIntent(mensagem)
 
   if (intent.id === "saudacao") {
-    return { resposta: "Olá! Em que posso ajudar?", estado: { fase: "idle" } }
+    return { resposta: "Olá! Em que posso ajudar?", estado: comMemoria(estado, {}) }
   }
 
   if (intent.id === "stock_critico" && intent.score >= 0.4) {
-    return { resposta: respostaStockCritico(contexto.toners), estado: { fase: "idle" } }
+    const marca = marcaParaResposta(mensagem, contexto.toners, estado.ultimaMarca)
+    return {
+      resposta: respostaStockCritico(contexto.toners, marca),
+      estado: comMemoria(estado, { ultimaMarca: marca }),
+    }
   }
 
   if (intent.id === "listar_stock" && intent.score >= 0.4) {
-    return { resposta: respostaListaStock(contexto.toners), estado: { fase: "idle" } }
+    const marca = marcaParaResposta(mensagem, contexto.toners, estado.ultimaMarca)
+    return {
+      resposta: respostaListaStock(contexto.toners, marca),
+      estado: comMemoria(estado, { ultimaMarca: marca }),
+    }
   }
 
   if (intent.id === "resumo_pedidos" && intent.score >= 0.4) {
-    return { resposta: respostaResumoPedidos(contexto.pedidos), estado: { fase: "idle" } }
+    return { resposta: respostaResumoPedidos(contexto.pedidos), estado: comMemoria(estado, {}) }
   }
 
   if (intent.id === "impacto" && intent.score >= 0.4) {
-    return { resposta: respostaImpacto(contexto.pedidos), estado: { fase: "idle" } }
+    return { resposta: respostaImpacto(contexto.pedidos), estado: comMemoria(estado, {}) }
   }
 
   if (intent.id === "aumentar_stock" && intent.score >= 0.34) {
@@ -307,39 +364,65 @@ export function processarMensagem(
     if (tonerAlvo && tonerAlvo.score >= 0.34) {
       const completo = contexto.toners.find((t) => t.id === tonerAlvo.toner.id)
       if (completo) {
-        return { resposta: respostaStockDeToner(completo), estado: { fase: "idle" } }
+        return { resposta: respostaStockDeToner(completo), estado: comMemoria(estado, {}) }
       }
     }
   }
 
-  if (pedeRespostaTicket(mensagem)) {
-    const alvo = encontrarTicketAlvo(mensagem, numero, contexto.tickets)
+  // Pede para responder/explicar um ticket — por referência explícita
+  // (número, título, quem o abriu) ou, se não houver nenhuma, pelo último
+  // ticket de que se falou nesta sessão (ex: "abre o ticket 423" seguido
+  // de "responde dizendo que já foi enviado").
+  if (temVerboResposta(mensagem)) {
+    let alvo: Ticket | null = null
+    if (numero || mencionaTicket(mensagem)) {
+      alvo = encontrarTicketAlvo(mensagem, numero, contexto.tickets)
+    }
+    if (!alvo && estado.ultimoTicket) {
+      alvo = contexto.tickets.find((t) => t.id === estado.ultimoTicket!.id) ?? null
+    }
     if (!alvo) {
       return {
         resposta: "A que ticket te referes? Diz-me o número, o título ou o nome de quem o abriu.",
-        estado: { fase: "idle" },
+        estado: comMemoria(estado, {}),
+      }
+    }
+
+    const ditado = extrairConteudoDitado(mensagem)
+    if (ditado) {
+      return {
+        resposta: `Aqui está a resposta que vou enviar no ticket **#${alvo.numero}**:\n"${ditado}"\nQueres enviar isto ao cliente? Uma vez enviada, não é possível retirar. — **sim** ou **não**`,
+        estado: {
+          fase: "confirmar_resposta_ticket",
+          ticketId: alvo.id,
+          ticketNumero: alvo.numero,
+          conteudo: ditado,
+        },
       }
     }
     return {
       resposta: `A analisar o ticket #${alvo.numero}…`,
-      estado: { fase: "idle" },
+      estado: comMemoria(estado, { ultimoTicket: { id: alvo.id, numero: alvo.numero } }),
       executar: { tipo: "preparar_resposta_ticket", ticketId: alvo.id, ticketNumero: alvo.numero },
     }
   }
 
   if (intent.id === "consultar_ticket" || (numero !== null && mencionaTicket(mensagem))) {
     if (!numero) {
-      return { resposta: "Qual é o número do ticket? (ex: \"ticket #5\")", estado: { fase: "idle" } }
+      return { resposta: "Qual é o número do ticket? (ex: \"ticket #5\")", estado: comMemoria(estado, {}) }
     }
+    const ticketAlvo = contexto.tickets.find((t) => t.numero === numero)
     return {
       resposta: `A ir buscar o contexto do ticket #${numero}…`,
-      estado: { fase: "idle" },
+      estado: comMemoria(estado, {
+        ultimoTicket: ticketAlvo ? { id: ticketAlvo.id, numero: ticketAlvo.numero } : undefined,
+      }),
       executar: { tipo: "consultar_ticket", numero },
     }
   }
 
   if (intent.id === "cancelar") {
-    return { resposta: "Tudo bem, fico por aqui.", estado: { fase: "idle" } }
+    return { resposta: "Tudo bem, fico por aqui.", estado: comMemoria(estado, {}) }
   }
 
   const falhasAnteriores = estado.falhasSeguidas ?? 0

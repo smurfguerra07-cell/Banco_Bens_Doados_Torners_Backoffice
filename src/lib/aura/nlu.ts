@@ -135,11 +135,14 @@ const INTENTS: IntentDef[] = [
       "alertas de stock",
       "falta de toners",
       "toners a acabar",
+      "so os criticos",
+      "filtra so os criticos",
+      "mostra so os criticos",
     ],
   },
   {
     id: "listar_stock",
-    ancoras: ["quais", "lista", "listar", "inventario", "catalogo", "todos", "todas"],
+    ancoras: ["quais", "lista", "listar", "inventario", "catalogo", "todos", "todas", "mostra", "mostrar"],
     exemplos: [
       "quais toners estao em stock",
       "lista todos os toners",
@@ -296,10 +299,39 @@ export function pedeStockDeToner(mensagem: string): boolean {
 const VERBOS_RESPOSTA_TICKET = ["responde", "responder", "respondas", "resposta", "explica", "explicar"]
 
 /** Verifica se a mensagem pede à Aura para responder/explicar um ticket (não só consultar). */
-export function pedeRespostaTicket(mensagem: string): boolean {
+export function temVerboResposta(mensagem: string): boolean {
   const msgTokens = new Set(tokens(mensagem))
-  const temVerboResposta = VERBOS_RESPOSTA_TICKET.some((v) => algumParece(msgTokens, v))
-  return temVerboResposta && mencionaTicket(mensagem)
+  return VERBOS_RESPOSTA_TICKET.some((v) => algumParece(msgTokens, v))
+}
+
+/**
+ * Extrai o conteúdo que o utilizador ditou para enviar (ex: "responde
+ * dizendo que já foi enviado" → "já foi enviado"), para quando a Aura
+ * não deve gerar a resposta sozinha mas usar exatamente o que lhe foi
+ * pedido para dizer.
+ */
+export function extrairConteudoDitado(mensagem: string): string | null {
+  const match = mensagem.match(/(?:dizendo|a dizer|informando|avisando)\s+que\s+(.+)/i)
+  if (!match) return null
+  const conteudo = match[1].trim()
+  if (conteudo.length === 0) return null
+  return conteudo.charAt(0).toUpperCase() + conteudo.slice(1)
+}
+
+/**
+ * Encontra a marca (entre as marcas realmente em catálogo) mencionada na
+ * mensagem — usado para filtrar respostas de stock por marca (ex: "mostra
+ * os toners HP") e para lembrar esse filtro em perguntas seguintes.
+ */
+export function encontrarMarca(mensagem: string, marcasDisponiveis: string[]): string | null {
+  const msgTokens = new Set(tokens(mensagem))
+  const marcasUnicas = [...new Set(marcasDisponiveis.map((m) => m.trim()).filter(Boolean))]
+  for (const marca of marcasUnicas) {
+    const marcaTokens = tokens(marca)
+    if (marcaTokens.length === 0) continue
+    if (marcaTokens.every((t) => algumParece(msgTokens, t))) return marca
+  }
+  return null
 }
 
 export interface CandidatoTicket {
