@@ -22,6 +22,8 @@ export interface Toner {
   observacoes: string | null
   ativo: boolean
   video_url: string | null
+  rendimento_paginas: number | null
+  instrucoes_instalacao: string | null
   created_at: string
   toner_imagens?: TonerImagem[]
 }
@@ -45,4 +47,6 @@ export interface TonerInput {
   observacoes: string | null
   ativo: boolean
   video_url: string | null
+  rendimento_paginas: number | null
+  instrucoes_instalacao: string | null
 }

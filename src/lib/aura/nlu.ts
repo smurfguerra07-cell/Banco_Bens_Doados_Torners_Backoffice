@@ -10,6 +10,9 @@ export type IntentId =
   | "impacto"
   | "aumentar_stock"
   | "consultar_ticket"
+  | "compatibilidade_toner"
+  | "rendimento_toner"
+  | "instalacao_toner"
   | "confirmar"
   | "cancelar"
   | "ajuda"
@@ -205,6 +208,47 @@ const INTENTS: IntentDef[] = [
       "chegou stock novo de",
       "entrada de stock",
       "recebemos mais toners de",
+    ],
+  },
+  {
+    id: "compatibilidade_toner",
+    ancoras: [
+      "compativel",
+      "compativeis",
+      "compatibilidade",
+      "funciona",
+      "funcionam",
+      "impressora",
+      "impressoras",
+      "serve",
+      "servem",
+    ],
+    exemplos: [
+      "com que impressoras funciona este toner",
+      "este toner e compativel com que impressoras",
+      "temos toners compativeis com esta impressora",
+      "que toners servem para esta impressora",
+      "este toner serve para a minha impressora",
+    ],
+  },
+  {
+    id: "rendimento_toner",
+    ancoras: ["rendimento", "paginas", "rende", "imprime"],
+    exemplos: [
+      "quantas paginas rende este toner",
+      "qual o rendimento deste toner",
+      "quantas paginas imprime este toner",
+      "qual a autonomia deste toner",
+    ],
+  },
+  {
+    id: "instalacao_toner",
+    ancoras: ["instala", "instalar", "instalacao", "trocar", "substituir"],
+    exemplos: [
+      "como se instala este toner",
+      "como trocar este toner",
+      "instrucoes de instalacao deste toner",
+      "como substituir este toner",
     ],
   },
   {

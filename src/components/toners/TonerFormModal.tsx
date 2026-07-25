@@ -20,6 +20,8 @@ const VAZIO: TonerInput = {
   observacoes: "",
   ativo: true,
   video_url: "",
+  rendimento_paginas: null,
+  instrucoes_instalacao: "",
 }
 
 export function TonerFormModal({
@@ -59,6 +61,8 @@ export function TonerFormModal({
         observacoes: toner.observacoes ?? "",
         ativo: toner.ativo,
         video_url: toner.video_url ?? "",
+        rendimento_paginas: toner.rendimento_paginas,
+        instrucoes_instalacao: toner.instrucoes_instalacao ?? "",
       })
       setCompatibilidadeTexto(toner.compatibilidade.join(", "))
       setPreviewUrl(toner.toner_imagens?.[0]?.storage_path ?? null)
@@ -88,6 +92,7 @@ export function TonerFormModal({
           .map((s) => s.trim())
           .filter(Boolean),
         video_url: form.video_url?.trim() || null,
+        instrucoes_instalacao: form.instrucoes_instalacao?.trim() || null,
       },
       imagem,
       empresaId || null
@@ -304,6 +309,43 @@ export function TonerFormModal({
                     }
                     className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
                   />
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">
+                    Rendimento (páginas, opcional)
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.rendimento_paginas ?? ""}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        rendimento_paginas: e.target.value ? Number(e.target.value) : null,
+                      }))
+                    }
+                    placeholder="Ex: 1600"
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">
+                    Instruções de instalação (opcional)
+                  </span>
+                  <textarea
+                    rows={3}
+                    value={form.instrucoes_instalacao ?? ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, instrucoes_instalacao: e.target.value }))
+                    }
+                    placeholder="Passo a passo para trocar este toner"
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    A Aura usa isto para responder a "como se instala este toner?".
+                  </span>
                 </label>
 
                 <label className="flex flex-col gap-1.5 text-sm">

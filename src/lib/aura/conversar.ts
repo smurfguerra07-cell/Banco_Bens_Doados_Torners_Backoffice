@@ -181,6 +181,42 @@ function respostaStockDeToner(toner: Toner): string {
   return `O **${tonerLabel(toner)}** tem **${disponivel}** unidade(s) em stock.`
 }
 
+function respostaCompatibilidade(toner: Toner): string {
+  if (toner.compatibilidade.length === 0) {
+    return `Não tenho a lista de impressoras compatíveis com o **${tonerLabel(toner)}** registada.`
+  }
+  return `O **${tonerLabel(toner)}** é compatível com: ${toner.compatibilidade.join(", ")}.`
+}
+
+function respostaRendimento(toner: Toner): string {
+  if (!toner.rendimento_paginas) {
+    return `Não tenho o rendimento em páginas do **${tonerLabel(toner)}** registado.`
+  }
+  return `O **${tonerLabel(toner)}** rende cerca de **${toner.rendimento_paginas}** páginas.`
+}
+
+function respostaInstalacao(toner: Toner): string {
+  if (!toner.instrucoes_instalacao) {
+    return `Não tenho instruções de instalação do **${tonerLabel(toner)}** registadas.`
+  }
+  return `Como instalar o **${tonerLabel(toner)}**:\n${toner.instrucoes_instalacao}`
+}
+
+/** Toners cuja lista de compatibilidade corresponde à impressora mencionada na mensagem. */
+function tonersCompativeisComImpressora(mensagem: string, toners: Toner[]): Toner[] {
+  const msgTokens = new Set(tokens(mensagem))
+  return toners.filter(
+    (t) =>
+      t.ativo &&
+      t.compatibilidade.some((c) => {
+        const compatTokens = tokens(c)
+        if (compatTokens.length === 0) return false
+        const encontrados = compatTokens.filter((tok) => algumParece(msgTokens, tok)).length
+        return encontrados / compatTokens.length >= 0.6
+      })
+  )
+}
+
 function respostaResumoPedidos(pedidos: Pedido[]): string {
   const pendentes = pedidos.filter((p) => ESTADOS_PENDENTES.includes(p.estado))
   if (pendentes.length === 0) return "Não há pedidos pendentes de análise neste momento. 👍"
@@ -321,6 +357,59 @@ export function processarMensagem(
 
   if (intent.id === "impacto" && intent.score >= 0.4) {
     return { resposta: respostaImpacto(contexto.pedidos), estado: comMemoria(estado, {}) }
+  }
+
+  if (intent.id === "compatibilidade_toner" && intent.score >= 0.4) {
+    const tonerAlvo = encontrarToner(mensagem, candidatos(contexto.toners))
+    if (tonerAlvo && tonerAlvo.score >= 0.34) {
+      const completo = contexto.toners.find((t) => t.id === tonerAlvo.toner.id)
+      if (completo) return { resposta: respostaCompatibilidade(completo), estado: comMemoria(estado, {}) }
+    }
+    const compativeis = tonersCompativeisComImpressora(mensagem, contexto.toners)
+    if (compativeis.length > 0) {
+      const lista = compativeis
+        .slice(0, 8)
+        .map((t) => `• ${tonerLabel(t)} — ${t.quantidade - t.quantidade_reservada} unidade(s)`)
+        .join("\n")
+      return {
+        resposta: `Temos ${compativeis.length} toner(s) compatíveis:\n\n${lista}`,
+        estado: comMemoria(estado, {}),
+      }
+    }
+    return {
+      resposta: "Não encontrei nenhum toner nem impressora que corresponda a isso. Podes indicar o modelo?",
+      estado: comMemoria(estado, {}),
+    }
+  }
+
+  if (intent.id === "rendimento_toner" && intent.score >= 0.4) {
+    const tonerAlvo = encontrarToner(mensagem, candidatos(contexto.toners))
+    if (!tonerAlvo || tonerAlvo.score < 0.34) {
+      return {
+        resposta: "A que toner te referes? Diz-me a marca, o modelo ou a referência.",
+        estado: comMemoria(estado, {}),
+      }
+    }
+    const completo = contexto.toners.find((t) => t.id === tonerAlvo.toner.id)
+    return {
+      resposta: completo ? respostaRendimento(completo) : "Não encontrei esse toner.",
+      estado: comMemoria(estado, {}),
+    }
+  }
+
+  if (intent.id === "instalacao_toner" && intent.score >= 0.4) {
+    const tonerAlvo = encontrarToner(mensagem, candidatos(contexto.toners))
+    if (!tonerAlvo || tonerAlvo.score < 0.34) {
+      return {
+        resposta: "A que toner te referes? Diz-me a marca, o modelo ou a referência.",
+        estado: comMemoria(estado, {}),
+      }
+    }
+    const completo = contexto.toners.find((t) => t.id === tonerAlvo.toner.id)
+    return {
+      resposta: completo ? respostaInstalacao(completo) : "Não encontrei esse toner.",
+      estado: comMemoria(estado, {}),
+    }
   }
 
   if (intent.id === "aumentar_stock" && intent.score >= 0.34) {
