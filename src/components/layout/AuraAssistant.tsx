@@ -6,9 +6,11 @@ import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
 import { useEmpresas } from "@/hooks/useEmpresas"
-import { incrementarStockToner } from "@/services/toners"
+import { ajustarQuantidadeToner, incrementarStockToner, registarDoacaoToner } from "@/services/toners"
 import { enviarMensagem, fetchMensagens, fetchTickets } from "@/services/tickets"
+import { atualizarEstadoPedido } from "@/services/pedidos"
 import { TICKET_CATEGORIA_LABEL, TICKET_ESTADO_LABEL } from "@/types/ticket"
+import { PEDIDO_ESTADO_LABEL } from "@/types/pedido"
 import { processarMensagem, type AuraState } from "@/lib/aura/conversar"
 import { gerarRespostaTicket } from "@/lib/aura/respostasTicket"
 import { construirRelatorio, TIPO_RELATORIO_LABEL } from "@/lib/aura/relatorios"
@@ -234,6 +236,55 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
       } finally {
         setAProcessar(false)
       }
+      return
+    }
+
+    if (acao.tipo === "registar_doacao") {
+      if (!user) return
+      setAProcessar(true)
+      try {
+        await registarDoacaoToner({
+          tonerId: acao.tonerId,
+          quantidade: acao.quantidade,
+          condicao: acao.condicao,
+          empresaId: acao.empresaId,
+          profileId: user.id,
+        })
+        await queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
+        adicionar("aura", `Doação registada. O **${acao.tonerLabel}** já reflete as novas unidades no stock.`)
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
+      } finally {
+        setAProcessar(false)
+      }
+      return
+    }
+
+    if (acao.tipo === "avancar_pedido") {
+      setAProcessar(true)
+      try {
+        await atualizarEstadoPedido(acao.pedidoId, acao.novoEstado)
+        await queryClient.invalidateQueries({ queryKey: ["admin-pedidos"] })
+        adicionar(
+          "aura",
+          `Feito. O pedido **#${acao.pedidoNumero}** está agora em **${PEDIDO_ESTADO_LABEL[acao.novoEstado]}**.`
+        )
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
+      } finally {
+        setAProcessar(false)
+      }
+      return
+    }
+
+    if (acao.tipo === "ajustar_stock_contagem") {
+      if (!user) return
+      try {
+        await ajustarQuantidadeToner(acao.tonerId, acao.quantidadeNova, user.id)
+        await queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
+      } catch {
+        adicionar("aura", `Não consegui corrigir o stock de ${acao.tonerLabel} — vale a pena confirmar manualmente.`)
+      }
     }
   }
 
@@ -247,6 +298,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
       toners: toners ?? [],
       pedidos: pedidos ?? [],
       tickets: tickets ?? [],
+      empresas: empresas ?? [],
     })
     setEstado(resultado.estado)
     adicionar("aura", resultado.resposta)

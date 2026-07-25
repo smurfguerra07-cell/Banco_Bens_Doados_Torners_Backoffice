@@ -466,3 +466,62 @@ export function encontrarToner(
 
   return melhor && melhor.score > 0 ? melhor : null
 }
+
+// ---------- Fluxos guiados ----------
+
+/** Pede para iniciar o fluxo guiado de registo de uma doação. */
+export function pedeRegistarDoacao(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return algumParece(msgTokens, "doacao") || algumParece(msgTokens, "doacoes")
+}
+
+const VERBOS_AVANCAR_PEDIDO = ["avanca", "avancar", "aprova", "aprovar", "processa", "processar"]
+
+/** Pede para avançar um pedido para o próximo estado (fluxo guiado de aprovação). */
+export function pedeAvancarPedido(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  const temVerbo = VERBOS_AVANCAR_PEDIDO.some((v) => algumParece(msgTokens, v))
+  return temVerbo && (algumParece(msgTokens, "pedido") || algumParece(msgTokens, "pedidos"))
+}
+
+/** Pede para iniciar a contagem semanal de stock, toner a toner. */
+export function pedeContagem(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return algumParece(msgTokens, "contagem") || algumParece(msgTokens, "inventariar")
+}
+
+export type CondicaoToner = "novo" | "usado" | "reconstruido"
+
+/** Extrai a condição de um toner mencionada na mensagem (novo/usado/reconstruído). */
+export function extrairCondicao(mensagem: string): CondicaoToner | null {
+  const msgTokens = new Set(tokens(mensagem))
+  if (algumParece(msgTokens, "reconstruido") || algumParece(msgTokens, "reconstruida")) return "reconstruido"
+  if (algumParece(msgTokens, "usado") || algumParece(msgTokens, "usada")) return "usado"
+  if (algumParece(msgTokens, "novo") || algumParece(msgTokens, "nova")) return "novo"
+  return null
+}
+
+export interface CandidatoEmpresa {
+  id: string
+  nome: string
+}
+
+/** Encontra a empresa mencionada na mensagem pelo nome (doador de uma doação, por exemplo). */
+export function encontrarEmpresa(
+  mensagem: string,
+  empresas: CandidatoEmpresa[]
+): { empresa: CandidatoEmpresa; score: number } | null {
+  const msgTokens = new Set(tokens(mensagem))
+  if (empresas.length === 0) return null
+
+  let melhor: { empresa: CandidatoEmpresa; score: number } | null = null
+  for (const empresa of empresas) {
+    const nomeTokens = [...new Set(tokens(empresa.nome))]
+    if (nomeTokens.length === 0) continue
+    const encontrados = nomeTokens.filter((t) => algumParece(msgTokens, t)).length
+    const score = encontrados / nomeTokens.length
+    if (!melhor || score > melhor.score) melhor = { empresa, score }
+  }
+
+  return melhor && melhor.score >= 0.5 ? melhor : null
+}

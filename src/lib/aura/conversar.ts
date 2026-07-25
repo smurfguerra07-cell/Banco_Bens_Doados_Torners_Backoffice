@@ -1,18 +1,25 @@
 import {
   detetarIntent,
+  encontrarEmpresa,
   encontrarMarca,
   encontrarTicket,
   encontrarToner,
   extrairConteudoDitado,
+  extrairCondicao,
   extrairNumero,
   mencionaTicket,
+  pedeAvancarPedido,
+  pedeContagem,
+  pedeRegistarDoacao,
   pedeRelatorio,
   pedeStockDeToner,
   temVerboResposta,
   tokens,
   algumParece,
+  type CandidatoEmpresa,
   type CandidatoTicket,
   type CandidatoToner,
+  type CondicaoToner,
 } from "./nlu"
 import {
   detetarFormatoRelatorio,
@@ -23,9 +30,12 @@ import {
   TIPO_RELATORIO_LABEL,
   type TipoRelatorioAura,
 } from "./relatorios"
+import type { Empresa } from "@/types/empresa"
 import type { Pedido, PedidoEstado } from "@/types/pedido"
+import { PROXIMO_ESTADO, PEDIDO_ESTADO_LABEL } from "@/types/pedido"
 import type { Ticket } from "@/types/ticket"
 import type { Toner } from "@/types/toner"
+import { TONER_ESTADO_LABEL } from "@/types/toner"
 
 const LIMITE_STOCK_BAIXO = 3
 const FATOR_CO2_KG_POR_TONER = 2.5
@@ -55,11 +65,41 @@ export type AuraState =
       dataInicio: string | null
       pendentesOnly: boolean
     }
+  // ---- Fluxo guiado: registar doação ----
+  | { fase: "doacao_toner" }
+  | { fase: "doacao_quantidade"; tonerId: string; tonerLabel: string }
+  | { fase: "doacao_condicao"; tonerId: string; tonerLabel: string; quantidade: number }
+  | {
+      fase: "doacao_doador"
+      tonerId: string
+      tonerLabel: string
+      quantidade: number
+      condicao: CondicaoToner
+    }
+  | {
+      fase: "confirmar_doacao"
+      tonerId: string
+      tonerLabel: string
+      quantidade: number
+      condicao: CondicaoToner
+      empresaId: string | null
+      empresaNome: string | null
+    }
+  // ---- Fluxo guiado: avançar pedido ----
+  | {
+      fase: "confirmar_avancar_pedido"
+      pedidoId: string
+      pedidoNumero: number
+      novoEstado: PedidoEstado
+    }
+  // ---- Fluxo guiado: contagem semanal ----
+  | { fase: "contagem"; tonerIds: string[]; indice: number; confirmados: number; corrigidos: number }
 
 export interface AuraContexto {
   toners: Toner[]
   pedidos: Pedido[]
   tickets: Ticket[]
+  empresas: Empresa[]
 }
 
 export interface AuraResultado {
@@ -85,6 +125,16 @@ export interface AuraResultado {
         dataInicio: string | null
         pendentesOnly: boolean
       }
+    | {
+        tipo: "registar_doacao"
+        tonerId: string
+        tonerLabel: string
+        quantidade: number
+        condicao: CondicaoToner
+        empresaId: string | null
+      }
+    | { tipo: "avancar_pedido"; pedidoId: string; pedidoNumero: number; novoEstado: PedidoEstado }
+    | { tipo: "ajustar_stock_contagem"; tonerId: string; tonerLabel: string; quantidadeNova: number }
 }
 
 const ESTADOS_PENDENTES: PedidoEstado[] = ["recebido", "em_analise"]
@@ -373,6 +423,167 @@ export function processarMensagem(
     return { resposta: "Ação cancelada. Nada foi alterado.", estado: { fase: "idle" } }
   }
 
+  // ---- Fluxo guiado: registar doação ----
+  if (estado.fase === "doacao_toner") {
+    const encontrado = encontrarToner(mensagem, candidatos(contexto.toners))
+    if (!encontrado || encontrado.score < 0.34) {
+      return {
+        resposta:
+          "Não encontrei esse toner no catálogo. Podes indicar a marca, o modelo ou a referência exata? (para um toner totalmente novo, cria-o primeiro em Inventário → Novo toner)",
+        estado,
+      }
+    }
+    return {
+      resposta: `Quantas unidades foram doadas de ${tonerLabel(encontrado.toner)}?`,
+      estado: { fase: "doacao_quantidade", tonerId: encontrado.toner.id, tonerLabel: tonerLabel(encontrado.toner) },
+    }
+  }
+
+  if (estado.fase === "doacao_quantidade") {
+    if (!numero || numero <= 0) {
+      return { resposta: "Quantas unidades foram doadas? (só preciso de um número)", estado }
+    }
+    return {
+      resposta: "Em que condição chegaram — novo, usado ou reconstruído?",
+      estado: { fase: "doacao_condicao", tonerId: estado.tonerId, tonerLabel: estado.tonerLabel, quantidade: numero },
+    }
+  }
+
+  if (estado.fase === "doacao_condicao") {
+    const condicao = extrairCondicao(mensagem)
+    if (!condicao) {
+      return { resposta: "Não percebi a condição — diz \"novo\", \"usado\" ou \"reconstruído\".", estado }
+    }
+    return {
+      resposta: "De que empresa veio esta doação? (diz o nome, ou \"não sei\" para deixar por associar)",
+      estado: {
+        fase: "doacao_doador",
+        tonerId: estado.tonerId,
+        tonerLabel: estado.tonerLabel,
+        quantidade: estado.quantidade,
+        condicao,
+      },
+    }
+  }
+
+  if (estado.fase === "doacao_doador") {
+    const semEmpresa = algumParece(new Set(tokens(mensagem)), "sei")
+    let empresa: CandidatoEmpresa | null = null
+    if (!semEmpresa) {
+      const achado = encontrarEmpresa(
+        mensagem,
+        contexto.empresas.map((e) => ({ id: e.id, nome: e.nome }))
+      )
+      if (!achado) {
+        return {
+          resposta:
+            "Não encontrei essa empresa. Diz o nome tal como está registado, ou \"não sei\" para deixar por associar.",
+          estado,
+        }
+      }
+      empresa = achado.empresa
+    }
+    return {
+      resposta:
+        `Confirmas o registo desta doação?\n\n` +
+        `• Toner: **${estado.tonerLabel}**\n` +
+        `• Quantidade: **${estado.quantidade}**\n` +
+        `• Condição: **${TONER_ESTADO_LABEL[estado.condicao]}**\n` +
+        `• Doador: **${empresa?.nome ?? "não associado"}**\n\n` +
+        `— **sim** ou **não**`,
+      estado: {
+        fase: "confirmar_doacao",
+        tonerId: estado.tonerId,
+        tonerLabel: estado.tonerLabel,
+        quantidade: estado.quantidade,
+        condicao: estado.condicao,
+        empresaId: empresa?.id ?? null,
+        empresaNome: empresa?.nome ?? null,
+      },
+    }
+  }
+
+  if (estado.fase === "confirmar_doacao") {
+    const intent = detetarIntent(mensagem)
+    if (intent.id === "confirmar") {
+      return {
+        resposta: "A registar a doação…",
+        estado: { fase: "idle" },
+        executar: {
+          tipo: "registar_doacao",
+          tonerId: estado.tonerId,
+          tonerLabel: estado.tonerLabel,
+          quantidade: estado.quantidade,
+          condicao: estado.condicao,
+          empresaId: estado.empresaId,
+        },
+      }
+    }
+    return { resposta: "Ação cancelada. Nada foi alterado.", estado: { fase: "idle" } }
+  }
+
+  // ---- Fluxo guiado: avançar pedido ----
+  if (estado.fase === "confirmar_avancar_pedido") {
+    const intent = detetarIntent(mensagem)
+    if (intent.id === "confirmar") {
+      return {
+        resposta: `A avançar o pedido #${estado.pedidoNumero}…`,
+        estado: { fase: "idle" },
+        executar: {
+          tipo: "avancar_pedido",
+          pedidoId: estado.pedidoId,
+          pedidoNumero: estado.pedidoNumero,
+          novoEstado: estado.novoEstado,
+        },
+      }
+    }
+    return { resposta: "Ação cancelada. Nada foi alterado.", estado: { fase: "idle" } }
+  }
+
+  // ---- Fluxo guiado: contagem semanal ----
+  if (estado.fase === "contagem") {
+    const tonerAtual = contexto.toners.find((t) => t.id === estado.tonerIds[estado.indice])
+    const intentAqui = detetarIntent(mensagem)
+
+    let confirmados = estado.confirmados
+    let corrigidos = estado.corrigidos
+    let ajuste: Extract<AuraResultado["executar"], { tipo: "ajustar_stock_contagem" }> | undefined
+
+    if (intentAqui.id === "confirmar") {
+      confirmados++
+    } else if (numero !== null && numero >= 0) {
+      corrigidos++
+      if (tonerAtual && numero !== tonerAtual.quantidade) {
+        ajuste = {
+          tipo: "ajustar_stock_contagem",
+          tonerId: tonerAtual.id,
+          tonerLabel: tonerLabel(tonerAtual),
+          quantidadeNova: numero,
+        }
+      }
+    } else {
+      return {
+        resposta: `Não percebi. Confirma com "sim" se ${tonerAtual ? tonerLabel(tonerAtual) : "este toner"} está certo, ou diz o número real de unidades.`,
+        estado,
+      }
+    }
+
+    const proximoIndice = estado.indice + 1
+    if (proximoIndice >= estado.tonerIds.length) {
+      return {
+        resposta: `Contagem semanal concluída. **${confirmados}** confirmado(s), **${corrigidos}** corrigido(s).`,
+        estado: { fase: "idle" },
+        executar: ajuste,
+      }
+    }
+    const proximoToner = contexto.toners.find((t) => t.id === estado.tonerIds[proximoIndice])
+    return {
+      resposta: `[${proximoIndice + 1}/${estado.tonerIds.length}] ${proximoToner ? tonerLabel(proximoToner) : "?"}: tenho registado **${proximoToner?.quantidade ?? "?"}** unidade(s). Está correto? Confirma com "sim" ou diz o número real.`,
+      estado: { fase: "contagem", tonerIds: estado.tonerIds, indice: proximoIndice, confirmados, corrigidos },
+      executar: ajuste,
+    }
+  }
+
   // Sem pedido em curso — deteta a intenção normalmente.
   const intent = detetarIntent(mensagem)
 
@@ -407,6 +618,75 @@ export function processarMensagem(
         dataInicio: periodo.dataInicio,
         pendentesOnly,
       },
+    }
+  }
+
+  // Início do fluxo guiado "registar doação".
+  if (pedeRegistarDoacao(mensagem)) {
+    const encontrado = encontrarToner(mensagem, candidatos(contexto.toners))
+    if (!encontrado || encontrado.score < 0.34) {
+      return {
+        resposta:
+          "Vamos registar uma doação. Qual é o toner? (marca, modelo ou referência — para um toner totalmente novo, cria-o primeiro em Inventário → Novo toner)",
+        estado: { fase: "doacao_toner" },
+      }
+    }
+    if (!numero || numero <= 0) {
+      return {
+        resposta: `Quantas unidades foram doadas de ${tonerLabel(encontrado.toner)}?`,
+        estado: {
+          fase: "doacao_quantidade",
+          tonerId: encontrado.toner.id,
+          tonerLabel: tonerLabel(encontrado.toner),
+        },
+      }
+    }
+    return {
+      resposta: "Em que condição chegaram — novo, usado ou reconstruído?",
+      estado: {
+        fase: "doacao_condicao",
+        tonerId: encontrado.toner.id,
+        tonerLabel: tonerLabel(encontrado.toner),
+        quantidade: numero,
+      },
+    }
+  }
+
+  // Início do fluxo guiado "avançar pedido" (aprovação passo a passo).
+  if (pedeAvancarPedido(mensagem)) {
+    if (!numero) {
+      return { resposta: "Qual é o número do pedido?", estado: comMemoria(estado, {}) }
+    }
+    const pedido = contexto.pedidos.find((p) => p.numero === numero)
+    if (!pedido) {
+      return {
+        resposta: `Não encontrei nenhum pedido com o número #${numero}.`,
+        estado: comMemoria(estado, {}),
+      }
+    }
+    const proximo = PROXIMO_ESTADO[pedido.estado]
+    if (!proximo) {
+      return {
+        resposta: `O pedido #${numero} está em **${PEDIDO_ESTADO_LABEL[pedido.estado]}** e não tem próximo passo automático (ou já terminou).`,
+        estado: comMemoria(estado, {}),
+      }
+    }
+    return {
+      resposta: `O pedido #${numero} está em **${PEDIDO_ESTADO_LABEL[pedido.estado]}**. Avançar para **${PEDIDO_ESTADO_LABEL[proximo]}**? — **sim** ou **não**`,
+      estado: { fase: "confirmar_avancar_pedido", pedidoId: pedido.id, pedidoNumero: pedido.numero, novoEstado: proximo },
+    }
+  }
+
+  // Início do fluxo guiado "contagem semanal".
+  if (pedeContagem(mensagem)) {
+    const ativos = contexto.toners.filter((t) => t.ativo)
+    if (ativos.length === 0) {
+      return { resposta: "Não há toners ativos para contar.", estado: comMemoria(estado, {}) }
+    }
+    const primeiro = ativos[0]
+    return {
+      resposta: `Vamos começar a contagem semanal (${ativos.length} toner(s)).\n\n[1/${ativos.length}] ${tonerLabel(primeiro)}: tenho registado **${primeiro.quantidade}** unidade(s). Está correto? Confirma com "sim" ou diz o número real.`,
+      estado: { fase: "contagem", tonerIds: ativos.map((t) => t.id), indice: 0, confirmados: 0, corrigidos: 0 },
     }
   }
 

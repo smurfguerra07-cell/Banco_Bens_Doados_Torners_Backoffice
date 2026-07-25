@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import type { Toner, TonerInput } from "@/types/toner"
+import type { Toner, TonerEstado, TonerInput } from "@/types/toner"
 import type { TonerImportado } from "@/lib/importToners"
 
 export async function fetchToners(): Promise<Toner[]> {
@@ -176,6 +176,71 @@ export async function incrementarStockToner(
     quantidade,
     profile_id: profileId,
     motivo: "Via assistente Aura",
+  })
+  if (movError) throw movError
+}
+
+/**
+ * Regista uma doação recebida — soma a quantidade, atualiza a condição
+ * do toner e regista a entrada no histórico com o doador. Usado pelo
+ * fluxo guiado "registar doação" do assistente Aura.
+ */
+export async function registarDoacaoToner(params: {
+  tonerId: string
+  quantidade: number
+  condicao: TonerEstado
+  empresaId: string | null
+  profileId: string
+}) {
+  const { data: atual, error: fetchError } = await supabase
+    .from("toners")
+    .select("quantidade")
+    .eq("id", params.tonerId)
+    .single()
+  if (fetchError) throw fetchError
+
+  const { error } = await supabase
+    .from("toners")
+    .update({ quantidade: atual.quantidade + params.quantidade, estado: params.condicao })
+    .eq("id", params.tonerId)
+  if (error) throw error
+
+  const { error: movError } = await supabase.from("movimentos_stock").insert({
+    toner_id: params.tonerId,
+    tipo: "entrada",
+    quantidade: params.quantidade,
+    empresa_id: params.empresaId,
+    profile_id: params.profileId,
+    motivo: "Doação registada via assistente Aura",
+  })
+  if (movError) throw movError
+}
+
+/**
+ * Corrige a quantidade de um toner para o valor real contado — usado
+ * pelo fluxo guiado "contagem semanal" do assistente Aura. Só regista
+ * um movimento de ajuste se o valor realmente mudar.
+ */
+export async function ajustarQuantidadeToner(tonerId: string, quantidadeNova: number, profileId: string) {
+  const { data: atual, error: fetchError } = await supabase
+    .from("toners")
+    .select("quantidade")
+    .eq("id", tonerId)
+    .single()
+  if (fetchError) throw fetchError
+
+  const diferenca = quantidadeNova - atual.quantidade
+  if (diferenca === 0) return
+
+  const { error } = await supabase.from("toners").update({ quantidade: quantidadeNova }).eq("id", tonerId)
+  if (error) throw error
+
+  const { error: movError } = await supabase.from("movimentos_stock").insert({
+    toner_id: tonerId,
+    tipo: "ajuste",
+    quantidade: diferenca,
+    profile_id: profileId,
+    motivo: "Correção via contagem semanal (Aura)",
   })
   if (movError) throw movError
 }
