@@ -5,6 +5,7 @@
 export type IntentId =
   | "saudacao"
   | "stock_critico"
+  | "listar_stock"
   | "resumo_pedidos"
   | "impacto"
   | "aumentar_stock"
@@ -66,6 +67,41 @@ export function tokens(s: string): string[] {
     .filter((t) => t.length > 0 && !STOPWORDS.has(t))
 }
 
+/** Distância de Levenshtein simples — usada para tolerar erros de escrita. */
+function distancia(a: string, b: string): number {
+  const m = a.length
+  const n = b.length
+  if (m === 0) return n
+  if (n === 0) return m
+
+  const dp = Array.from({ length: n + 1 }, (_, i) => i)
+  for (let i = 1; i <= m; i++) {
+    let anterior = dp[0]
+    dp[0] = i
+    for (let j = 1; j <= n; j++) {
+      const temp = dp[j]
+      dp[j] = a[i - 1] === b[j - 1] ? anterior : 1 + Math.min(anterior, dp[j], dp[j - 1])
+      anterior = temp
+    }
+  }
+  return dp[n]
+}
+
+/** Verifica se um token da mensagem "parece" com uma palavra-alvo, tolerando erros de escrita. */
+function pareceCom(token: string, alvo: string): boolean {
+  if (token === alvo) return true
+  if (token.length < 4 || alvo.length < 4) return false
+  const maxDistancia = alvo.length <= 5 ? 1 : 2
+  return distancia(token, alvo) <= maxDistancia
+}
+
+function algumParece(msgTokens: Set<string>, alvo: string): boolean {
+  for (const t of msgTokens) {
+    if (pareceCom(t, alvo)) return true
+  }
+  return false
+}
+
 interface IntentDef {
   id: IntentId
   /** Pelo menos uma destas palavras tem de estar na mensagem para a intenção ser considerada. */
@@ -99,6 +135,18 @@ const INTENTS: IntentDef[] = [
       "alertas de stock",
       "falta de toners",
       "toners a acabar",
+    ],
+  },
+  {
+    id: "listar_stock",
+    ancoras: ["quais", "lista", "listar", "inventario", "catalogo", "todos", "todas"],
+    exemplos: [
+      "quais toners estao em stock",
+      "lista todos os toners",
+      "mostra o inventario",
+      "que toners tenho",
+      "mostra todos os produtos",
+      "quais produtos tenho",
     ],
   },
   {
@@ -196,19 +244,25 @@ export function detetarIntent(mensagem: string): DeteccaoIntent {
   if (msgTokens.size === 0) return melhor
 
   for (const intent of INTENTS) {
-    const temAncora = intent.ancoras.some((a) => msgTokens.has(a))
+    const temAncora = intent.ancoras.some((a) => algumParece(msgTokens, a))
     if (!temAncora) continue
 
     for (const exemplo of intent.exemplos) {
       const exTokens = tokens(exemplo)
       if (exTokens.length === 0) continue
-      const encontrados = exTokens.filter((t) => msgTokens.has(t)).length
+      const encontrados = exTokens.filter((t) => algumParece(msgTokens, t)).length
       const score = encontrados / exTokens.length
       if (score > melhor.score) melhor = { id: intent.id, score }
     }
   }
 
   return melhor
+}
+
+/** Verifica se a mensagem parece mencionar um ticket (tolera erros de escrita). */
+export function mencionaTicket(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return algumParece(msgTokens, "ticket") || algumParece(msgTokens, "tickets")
 }
 
 /** Extrai o primeiro número inteiro presente na mensagem (quantidade, nº de ticket, etc.). */
@@ -248,7 +302,7 @@ export function encontrarToner(
 
     const rotuloTokens = [...new Set(tokens(`${toner.marca} ${toner.modelo} ${toner.referencia}`))]
     if (rotuloTokens.length === 0) continue
-    const encontrados = rotuloTokens.filter((t) => msgTokens.has(t)).length
+    const encontrados = rotuloTokens.filter((t) => algumParece(msgTokens, t)).length
     const score = encontrados / rotuloTokens.length
     if (!melhor || score > melhor.score) melhor = { toner, score }
   }

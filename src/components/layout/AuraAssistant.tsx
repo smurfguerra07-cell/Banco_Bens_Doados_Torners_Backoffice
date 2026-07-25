@@ -11,6 +11,7 @@ import { processarMensagem, type AuraState } from "@/lib/aura/conversar"
 import { cn } from "@/lib/utils"
 
 const SUGESTOES = [
+  "Quais toners tenho em stock?",
   "Que toners estão em stock crítico?",
   "Resume os pedidos pendentes",
   "Qual foi o impacto ambiental?",

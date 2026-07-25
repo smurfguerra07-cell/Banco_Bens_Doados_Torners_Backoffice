@@ -1,4 +1,4 @@
-import { detetarIntent, encontrarToner, extrairNumero, type CandidatoToner } from "./nlu"
+import { detetarIntent, encontrarToner, extrairNumero, mencionaTicket, type CandidatoToner } from "./nlu"
 import type { Pedido, PedidoEstado } from "@/types/pedido"
 import type { Toner } from "@/types/toner"
 
@@ -44,6 +44,33 @@ function respostaStockCritico(toners: Toner[]): string {
     .map((t) => `• ${t.marca} ${t.modelo} — ${t.quantidade - t.quantidade_reservada} unidade(s)`)
     .join("\n")
   return `Há ${criticos.length} toner(s) em stock crítico (≤ ${LIMITE_STOCK_BAIXO} unidades):\n\n${lista}`
+}
+
+function respostaListaStock(toners: Toner[]): string {
+  const ativos = toners.filter((t) => t.ativo)
+  const comStock = ativos.filter((t) => t.quantidade - t.quantidade_reservada > 0)
+  const semStock = ativos.filter((t) => t.quantidade - t.quantidade_reservada <= 0)
+
+  if (ativos.length === 0) return "Ainda não há toners ativos registados."
+
+  const partes: string[] = []
+  if (comStock.length > 0) {
+    const lista = comStock
+      .slice(0, 12)
+      .map((t) => `• ${t.marca} ${t.modelo} — ${t.quantidade - t.quantidade_reservada} unidade(s)`)
+      .join("\n")
+    const resto = comStock.length > 12 ? `\n… e mais ${comStock.length - 12}.` : ""
+    partes.push(`Com stock (${comStock.length}):\n${lista}${resto}`)
+  }
+  if (semStock.length > 0) {
+    const lista = semStock
+      .slice(0, 12)
+      .map((t) => `• ${t.marca} ${t.modelo}`)
+      .join("\n")
+    const resto = semStock.length > 12 ? `\n… e mais ${semStock.length - 12}.` : ""
+    partes.push(`Sem stock (${semStock.length}):\n${lista}${resto}`)
+  }
+  return partes.join("\n\n")
 }
 
 function respostaResumoPedidos(pedidos: Pedido[]): string {
@@ -143,6 +170,10 @@ export function processarMensagem(
     return { resposta: respostaStockCritico(contexto.toners), estado: { fase: "idle" } }
   }
 
+  if (intent.id === "listar_stock" && intent.score >= 0.4) {
+    return { resposta: respostaListaStock(contexto.toners), estado: { fase: "idle" } }
+  }
+
   if (intent.id === "resumo_pedidos" && intent.score >= 0.4) {
     return { resposta: respostaResumoPedidos(contexto.pedidos), estado: { fase: "idle" } }
   }
@@ -180,7 +211,7 @@ export function processarMensagem(
     }
   }
 
-  if (intent.id === "consultar_ticket" || (numero && /ticket/.test(detetarBase(mensagem)))) {
+  if (intent.id === "consultar_ticket" || (numero !== null && mencionaTicket(mensagem))) {
     if (!numero) {
       return { resposta: "Qual é o número do ticket? (ex: \"ticket #5\")", estado: { fase: "idle" } }
     }
@@ -197,14 +228,7 @@ export function processarMensagem(
 
   return {
     resposta:
-      "Não percebi bem. Podes perguntar-me sobre: stock crítico, pedidos pendentes, impacto ambiental, pedir para aumentar o stock de um toner, ou pedir o contexto de um ticket (ex: \"ticket #5\").",
+      "Não percebi bem. Podes perguntar-me sobre: quais toners tenho em stock, stock crítico, pedidos pendentes, impacto ambiental, pedir para aumentar o stock de um toner, ou pedir o contexto de um ticket (ex: \"ticket #5\").",
     estado: { fase: "idle" },
   }
-}
-
-function detetarBase(mensagem: string) {
-  return mensagem
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
 }
