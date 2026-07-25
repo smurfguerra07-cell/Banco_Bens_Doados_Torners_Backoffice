@@ -550,3 +550,23 @@ export function pedeHistoricoBeneficiarios(mensagem: string): boolean {
   const msgTokens = new Set(tokens(mensagem))
   return TERMOS_BENEFICIARIOS.some((t) => algumParece(msgTokens, t))
 }
+
+// ---------- Documentos operacionais ----------
+
+/** Pede a ficha (recibo) em PDF da última doação registada na sessão. */
+export function pedeFichaDoacao(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return algumParece(msgTokens, "ficha") && (algumParece(msgTokens, "doacao") || algumParece(msgTokens, "doacoes"))
+}
+
+/** Pede uma etiqueta de identificação em PDF para um toner. */
+export function pedeEtiqueta(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return algumParece(msgTokens, "etiqueta") || algumParece(msgTokens, "etiquetas")
+}
+
+/** Pede o briefing diário (stock crítico + pedidos pendentes + tickets abertos) em PDF. */
+export function pedeBriefing(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return algumParece(msgTokens, "briefing")
+}

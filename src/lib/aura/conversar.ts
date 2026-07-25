@@ -9,7 +9,10 @@ import {
   extrairNumero,
   mencionaTicket,
   pedeAvancarPedido,
+  pedeBriefing,
   pedeContagem,
+  pedeEtiqueta,
+  pedeFichaDoacao,
   pedeHistoricoBeneficiarios,
   pedeHistoricoDoadores,
   pedeRegistarDoacao,
@@ -50,6 +53,13 @@ export type AuraState =
       falhasSeguidas?: number
       ultimaMarca?: string
       ultimoTicket?: { id: string; numero: number }
+      ultimaDoacao?: {
+        tonerLabel: string
+        quantidade: number
+        condicao: CondicaoToner
+        empresaNome: string | null
+        data: string
+      }
     }
   | { fase: "aguardar_toner"; quantidade: number }
   | { fase: "aguardar_quantidade"; tonerId: string; tonerLabel: string }
@@ -137,9 +147,20 @@ export interface AuraResultado {
         quantidade: number
         condicao: CondicaoToner
         empresaId: string | null
+        empresaNome: string | null
       }
     | { tipo: "avancar_pedido"; pedidoId: string; pedidoNumero: number; novoEstado: PedidoEstado }
     | { tipo: "ajustar_stock_contagem"; tonerId: string; tonerLabel: string; quantidadeNova: number }
+    | {
+        tipo: "gerar_ficha_doacao"
+        tonerLabel: string
+        quantidade: number
+        condicao: CondicaoToner
+        empresaNome: string | null
+        data: string
+      }
+    | { tipo: "gerar_etiqueta"; tonerId: string; tonerLabel: string }
+    | { tipo: "gerar_briefing" }
 }
 
 const ESTADOS_PENDENTES: PedidoEstado[] = ["recebido", "em_analise"]
@@ -169,6 +190,7 @@ function comMemoria(base: IdleState, patch: Partial<Omit<IdleState, "fase">>): A
     fase: "idle",
     ultimaMarca: "ultimaMarca" in patch ? patch.ultimaMarca : base.ultimaMarca,
     ultimoTicket: "ultimoTicket" in patch ? patch.ultimoTicket : base.ultimoTicket,
+    ultimaDoacao: "ultimaDoacao" in patch ? patch.ultimaDoacao : base.ultimaDoacao,
     falhasSeguidas: "falhasSeguidas" in patch ? patch.falhasSeguidas : undefined,
   }
 }
@@ -521,6 +543,7 @@ export function processarMensagem(
           quantidade: estado.quantidade,
           condicao: estado.condicao,
           empresaId: estado.empresaId,
+          empresaNome: estado.empresaNome,
         },
       }
     }
@@ -623,6 +646,46 @@ export function processarMensagem(
         dataInicio: periodo.dataInicio,
         pendentesOnly,
       },
+    }
+  }
+
+  // Documentos operacionais em PDF — verificados antes dos fluxos
+  // guiados, porque "ficha de doação" também contém a palavra "doação"
+  // (que sozinha dispara o fluxo de registar uma doação nova).
+  if (pedeFichaDoacao(mensagem)) {
+    if (!estado.ultimaDoacao) {
+      return {
+        resposta: "Ainda não registei nenhuma doação nesta conversa. Pede-me para \"registar uma doação\" primeiro.",
+        estado: comMemoria(estado, {}),
+      }
+    }
+    return {
+      resposta: "A gerar a ficha de doação…",
+      estado: comMemoria(estado, {}),
+      executar: { tipo: "gerar_ficha_doacao", ...estado.ultimaDoacao },
+    }
+  }
+
+  if (pedeEtiqueta(mensagem)) {
+    const encontrado = encontrarToner(mensagem, candidatos(contexto.toners))
+    if (!encontrado || encontrado.score < 0.34) {
+      return {
+        resposta: "Para que toner queres a etiqueta? Diz-me a marca, o modelo ou a referência.",
+        estado: comMemoria(estado, {}),
+      }
+    }
+    return {
+      resposta: `A gerar a etiqueta de ${tonerLabel(encontrado.toner)}…`,
+      estado: comMemoria(estado, {}),
+      executar: { tipo: "gerar_etiqueta", tonerId: encontrado.toner.id, tonerLabel: tonerLabel(encontrado.toner) },
+    }
+  }
+
+  if (pedeBriefing(mensagem)) {
+    return {
+      resposta: "A gerar o briefing diário…",
+      estado: comMemoria(estado, {}),
+      executar: { tipo: "gerar_briefing" },
     }
   }
 

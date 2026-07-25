@@ -15,6 +15,7 @@ import { PEDIDO_ESTADO_LABEL } from "@/types/pedido"
 import { processarMensagem, type AuraState } from "@/lib/aura/conversar"
 import { gerarRespostaTicket } from "@/lib/aura/respostasTicket"
 import { construirRelatorio, TIPO_RELATORIO_LABEL } from "@/lib/aura/relatorios"
+import { gerarBriefingDiarioPdf, gerarEtiquetaTonerPdf, gerarFichaDoacaoPdf } from "@/lib/aura/documentos"
 import { criarCsvBlob, criarPdfBlob } from "@/lib/export"
 import { cn } from "@/lib/utils"
 
@@ -253,7 +254,18 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
           profileId: user.id,
         })
         await queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
-        adicionar("aura", `Doação registada. O **${acao.tonerLabel}** já reflete as novas unidades no stock.`)
+        const doacao = {
+          tonerLabel: acao.tonerLabel,
+          quantidade: acao.quantidade,
+          condicao: acao.condicao,
+          empresaNome: acao.empresaNome,
+          data: new Date().toISOString(),
+        }
+        setEstado((prev) => (prev.fase === "idle" ? { ...prev, ultimaDoacao: doacao } : { fase: "idle", ultimaDoacao: doacao }))
+        adicionar(
+          "aura",
+          `Doação registada. O **${acao.tonerLabel}** já reflete as novas unidades no stock. Posso gerar a ficha de doação em PDF, se quiseres.`
+        )
       } catch {
         adicionar("aura", MENSAGEM_ERRO_GENERICO)
       } finally {
@@ -286,6 +298,59 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
         await queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
       } catch {
         adicionar("aura", `Não consegui corrigir o stock de ${acao.tonerLabel} — vale a pena confirmar manualmente.`)
+      }
+      return
+    }
+
+    if (acao.tipo === "gerar_ficha_doacao") {
+      setAProcessar(true)
+      try {
+        const blob = gerarFichaDoacaoPdf(acao)
+        const url = URL.createObjectURL(blob)
+        adicionar("aura", "Aqui está a ficha de doação.", { nome: "ficha-doacao.pdf", url })
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
+      } finally {
+        setAProcessar(false)
+      }
+      return
+    }
+
+    if (acao.tipo === "gerar_etiqueta") {
+      setAProcessar(true)
+      try {
+        const toner = (toners ?? []).find((t) => t.id === acao.tonerId)
+        if (!toner) {
+          adicionar("aura", `Não encontrei o ${acao.tonerLabel}.`)
+          return
+        }
+        const blob = gerarEtiquetaTonerPdf(toner)
+        const url = URL.createObjectURL(blob)
+        adicionar("aura", `Aqui está a etiqueta do **${acao.tonerLabel}**.`, {
+          nome: `etiqueta-${toner.referencia}.pdf`,
+          url,
+        })
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
+      } finally {
+        setAProcessar(false)
+      }
+      return
+    }
+
+    if (acao.tipo === "gerar_briefing") {
+      setAProcessar(true)
+      try {
+        const blob = gerarBriefingDiarioPdf({ toners: toners ?? [], pedidos: pedidos ?? [], tickets: tickets ?? [] })
+        const url = URL.createObjectURL(blob)
+        adicionar("aura", "Aqui está o briefing diário.", {
+          nome: `briefing-${new Date().toISOString().slice(0, 10)}.pdf`,
+          url,
+        })
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
+      } finally {
+        setAProcessar(false)
       }
     }
   }
