@@ -149,6 +149,38 @@ export async function importarToners(
 }
 
 /**
+ * Incrementa o stock de um toner e regista a entrada no histórico —
+ * usado pelo assistente Aura, depois de o utilizador confirmar a ação.
+ */
+export async function incrementarStockToner(
+  tonerId: string,
+  quantidade: number,
+  profileId: string
+) {
+  const { data: atual, error: fetchError } = await supabase
+    .from("toners")
+    .select("quantidade")
+    .eq("id", tonerId)
+    .single()
+  if (fetchError) throw fetchError
+
+  const { error } = await supabase
+    .from("toners")
+    .update({ quantidade: atual.quantidade + quantidade })
+    .eq("id", tonerId)
+  if (error) throw error
+
+  const { error: movError } = await supabase.from("movimentos_stock").insert({
+    toner_id: tonerId,
+    tipo: "entrada",
+    quantidade,
+    profile_id: profileId,
+    motivo: "Via assistente Aura",
+  })
+  if (movError) throw movError
+}
+
+/**
  * Cria ou atualiza um toner e, opcionalmente, a sua imagem — num só
  * passo. Se a quantidade subir (toner novo, ou edição que aumenta o
  * stock), regista automaticamente uma entrada no histórico, com a

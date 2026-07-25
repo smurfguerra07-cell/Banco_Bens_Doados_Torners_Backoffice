@@ -1,15 +1,33 @@
 import { useEffect, useRef, useState } from "react"
-import toast from "react-hot-toast"
+import { useQueryClient } from "@tanstack/react-query"
 import { ArrowUp, Sparkles, X } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+import { useToners } from "@/hooks/useToners"
+import { usePedidos } from "@/hooks/usePedidos"
+import { incrementarStockToner } from "@/services/toners"
+import { fetchMensagens, fetchTickets } from "@/services/tickets"
+import { TICKET_CATEGORIA_LABEL, TICKET_ESTADO_LABEL } from "@/types/ticket"
+import { processarMensagem, type AuraState } from "@/lib/aura/conversar"
+import { cn } from "@/lib/utils"
 
 const SUGESTOES = [
-  "Resume os pedidos pendentes por urgência",
   "Que toners estão em stock crítico?",
-  "Qual foi o impacto ambiental deste mês?",
+  "Resume os pedidos pendentes",
+  "Qual foi o impacto ambiental?",
+  "Aumenta o stock do toner X em 10",
 ]
 
-function avisarEmBreve() {
-  toast("A Aura ainda não está disponível — em breve.", { icon: "✨" })
+interface Mensagem {
+  id: string
+  autor: "user" | "aura"
+  texto: string
+}
+
+const MENSAGEM_INICIAL: Mensagem = {
+  id: "welcome",
+  autor: "aura",
+  texto:
+    "Olá. Sou a Aura — a tua assistente na Banco de Bens Doados. Pergunta-me sobre stock, pedidos ou impacto ambiental, ou pede-me para aumentar o stock de um toner ou consultar um ticket.",
 }
 
 export function AuraCommandBar({ onOpen }: { onOpen: () => void }) {
@@ -33,8 +51,17 @@ export function AuraCommandBar({ onOpen }: { onOpen: () => void }) {
 }
 
 export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user } = useAuth()
+  const { data: toners } = useToners()
+  const { data: pedidos } = usePedidos()
+  const queryClient = useQueryClient()
+
+  const [mensagens, setMensagens] = useState<Mensagem[]>([MENSAGEM_INICIAL])
+  const [estado, setEstado] = useState<AuraState>({ fase: "idle" })
   const [input, setInput] = useState("")
+  const [aProcessar, setAProcessar] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 300)
@@ -48,10 +75,86 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose])
 
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
+  }, [mensagens])
+
+  function adicionar(autor: Mensagem["autor"], texto: string) {
+    setMensagens((m) => [...m, { id: `${Date.now()}-${autor}-${Math.random()}`, autor, texto }])
+  }
+
+  async function executarAcao(
+    acao: NonNullable<ReturnType<typeof processarMensagem>["executar"]>
+  ) {
+    if (acao.tipo === "incrementar_stock") {
+      if (!user) return
+      setAProcessar(true)
+      try {
+        await incrementarStockToner(acao.tonerId, acao.quantidade, user.id)
+        await queryClient.invalidateQueries({ queryKey: ["admin-toners"] })
+        adicionar(
+          "aura",
+          `✅ Stock de ${acao.tonerLabel} atualizado (+${acao.quantidade}). Fica registado no histórico deste toner.`
+        )
+      } catch (err) {
+        adicionar(
+          "aura",
+          `Não consegui atualizar o stock: ${err instanceof Error ? err.message : "erro desconhecido"}.`
+        )
+      } finally {
+        setAProcessar(false)
+      }
+      return
+    }
+
+    if (acao.tipo === "consultar_ticket") {
+      setAProcessar(true)
+      try {
+        const tickets = await fetchTickets()
+        const ticket = tickets.find((t) => t.numero === acao.numero)
+        if (!ticket) {
+          adicionar("aura", `Não encontrei nenhum ticket com o número #${acao.numero}.`)
+          return
+        }
+        const mensagensTicket = await fetchMensagens(ticket.id)
+        const ultimas = mensagensTicket
+          .slice(-3)
+          .map((m) => `— ${m.conteudo ?? (m.anexo_tipo === "audio" ? "[áudio]" : "[imagem]")}`)
+          .join("\n")
+        adicionar(
+          "aura",
+          `Ticket #${ticket.numero} — ${ticket.assunto}\n` +
+            `Categoria: ${TICKET_CATEGORIA_LABEL[ticket.categoria]} · Estado: ${TICKET_ESTADO_LABEL[ticket.estado]}\n` +
+            `Cliente: ${ticket.profiles?.full_name ?? "—"}\n\n` +
+            (ultimas ? `Últimas mensagens:\n${ultimas}` : "Ainda sem mensagens neste ticket.")
+        )
+      } catch (err) {
+        adicionar(
+          "aura",
+          `Não consegui consultar o ticket: ${err instanceof Error ? err.message : "erro desconhecido"}.`
+        )
+      } finally {
+        setAProcessar(false)
+      }
+    }
+  }
+
   function submit(texto: string) {
-    if (!texto.trim()) return
-    avisarEmBreve()
+    const limpo = texto.trim()
+    if (!limpo || aProcessar) return
+    adicionar("user", limpo)
     setInput("")
+
+    const resultado = processarMensagem(limpo, estado, {
+      toners: toners ?? [],
+      pedidos: pedidos ?? [],
+    })
+    setEstado(resultado.estado)
+    adicionar("aura", resultado.resposta)
+
+    if (resultado.executar) {
+      void executarAcao(resultado.executar)
+    }
   }
 
   return (
@@ -76,7 +179,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
             <div>
               <p className="text-sm font-semibold tracking-tight text-foreground">Aura</p>
               <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Assistente IA
+                Assistente
               </p>
             </div>
           </div>
@@ -89,27 +192,56 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 py-6">
-          <div className="animate-slide-up text-sm leading-relaxed text-foreground">
-            Olá. Sou a <span className="font-semibold">Aura</span> — a tua assistente na Banco de
-            Bens Doados. Esta funcionalidade está em construção; em breve vou conseguir responder
-            a perguntas sobre pedidos, stock e impacto ambiental.
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6">
+          <div className="flex flex-col gap-4">
+            {mensagens.map((m) => (
+              <div
+                key={m.id}
+                className={cn("animate-slide-up", m.autor === "user" && "flex justify-end")}
+              >
+                {m.autor === "user" ? (
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
+                    {m.texto}
+                  </div>
+                ) : (
+                  <div className="max-w-full whitespace-pre-line text-sm leading-relaxed text-foreground">
+                    {m.texto}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {aProcessar && (
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <span className="animate-shimmer-dot size-1.5 rounded-full bg-primary/40" />
+                <span
+                  className="animate-shimmer-dot size-1.5 rounded-full bg-primary/40"
+                  style={{ animationDelay: "200ms" }}
+                />
+                <span
+                  className="animate-shimmer-dot size-1.5 rounded-full bg-primary/40"
+                  style={{ animationDelay: "400ms" }}
+                />
+              </div>
+            )}
           </div>
 
-          <div className="mt-6 space-y-2">
-            <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Sugestões
-            </p>
-            {SUGESTOES.map((s) => (
-              <button
-                key={s}
-                onClick={() => submit(s)}
-                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-foreground/80 transition-all hover:border-primary/20 hover:shadow-[var(--shadow-elegant)]"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+          {mensagens.length <= 1 && (
+            <div className="mt-6 space-y-2">
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Sugestões
+              </p>
+              {SUGESTOES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => submit(s)}
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-foreground/80 transition-all hover:border-primary/20 hover:shadow-[var(--shadow-elegant)]"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border bg-background p-4">
@@ -136,7 +268,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
             />
             <button
               type="submit"
-              disabled={!input.trim()}
+              disabled={!input.trim() || aProcessar}
               className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-30"
             >
               <ArrowUp className="size-4" strokeWidth={2.5} />
