@@ -6,6 +6,7 @@ import {
   extrairConteudoDitado,
   extrairNumero,
   mencionaTicket,
+  pedeRelatorio,
   pedeStockDeToner,
   temVerboResposta,
   tokens,
@@ -13,6 +14,15 @@ import {
   type CandidatoTicket,
   type CandidatoToner,
 } from "./nlu"
+import {
+  detetarFormatoRelatorio,
+  detetarMarcaRelatorio,
+  detetarPeriodoRelatorio,
+  detetarTipoRelatorio,
+  pedeApenasPendentes,
+  TIPO_RELATORIO_LABEL,
+  type TipoRelatorioAura,
+} from "./relatorios"
 import type { Pedido, PedidoEstado } from "@/types/pedido"
 import type { Ticket } from "@/types/ticket"
 import type { Toner } from "@/types/toner"
@@ -37,6 +47,14 @@ export type AuraState =
       quantidadeAtual: number
     }
   | { fase: "confirmar_resposta_ticket"; ticketId: string; ticketNumero: number; conteudo: string }
+  | {
+      fase: "confirmar_relatorio"
+      tipoRelatorio: TipoRelatorioAura
+      formato: "csv" | "pdf"
+      marcaFiltro?: string
+      dataInicio: string | null
+      pendentesOnly: boolean
+    }
 
 export interface AuraContexto {
   toners: Toner[]
@@ -59,6 +77,14 @@ export interface AuraResultado {
     | { tipo: "consultar_ticket"; numero: number }
     | { tipo: "preparar_resposta_ticket"; ticketId: string; ticketNumero: number }
     | { tipo: "responder_ticket"; ticketId: string; ticketNumero: number; conteudo: string }
+    | {
+        tipo: "gerar_relatorio"
+        tipoRelatorio: TipoRelatorioAura
+        formato: "csv" | "pdf"
+        marcaFiltro?: string
+        dataInicio: string | null
+        pendentesOnly: boolean
+      }
 }
 
 const ESTADOS_PENDENTES: PedidoEstado[] = ["recebido", "em_analise"]
@@ -328,11 +354,60 @@ export function processarMensagem(
     }
   }
 
+  if (estado.fase === "confirmar_relatorio") {
+    const intent = detetarIntent(mensagem)
+    if (intent.id === "confirmar") {
+      return {
+        resposta: "A gerar o relatório…",
+        estado: { fase: "idle" },
+        executar: {
+          tipo: "gerar_relatorio",
+          tipoRelatorio: estado.tipoRelatorio,
+          formato: estado.formato,
+          marcaFiltro: estado.marcaFiltro,
+          dataInicio: estado.dataInicio,
+          pendentesOnly: estado.pendentesOnly,
+        },
+      }
+    }
+    return { resposta: "Ação cancelada. Nada foi alterado.", estado: { fase: "idle" } }
+  }
+
   // Sem pedido em curso — deteta a intenção normalmente.
   const intent = detetarIntent(mensagem)
 
   if (intent.id === "saudacao") {
     return { resposta: "Olá! Em que posso ajudar?", estado: comMemoria(estado, {}) }
+  }
+
+  // Pedido explícito de relatório — verificado antes das outras intenções
+  // (por palavra-chave, não por pontuação) para que "relatório de pedidos
+  // pendentes" ou "relatório de impacto ambiental" não sejam apanhados
+  // pelas respostas diretas de pedidos/impacto.
+  if (pedeRelatorio(mensagem)) {
+    const tipoRelatorio = detetarTipoRelatorio(mensagem)
+    const formato = detetarFormatoRelatorio(mensagem)
+    const marcaFiltro = detetarMarcaRelatorio(mensagem, contexto.toners)
+    const periodo = detetarPeriodoRelatorio(mensagem)
+    const pendentesOnly = pedeApenasPendentes(mensagem)
+
+    const detalhes = [
+      marcaFiltro ? `filtrado por **${marcaFiltro}**` : null,
+      periodo.label ? `para **${periodo.label}**` : null,
+      pendentesOnly ? "só os pendentes" : null,
+    ].filter(Boolean)
+
+    return {
+      resposta: `Vou gerar um relatório de **${TIPO_RELATORIO_LABEL[tipoRelatorio]}** em **${formato.toUpperCase()}**${detalhes.length > 0 ? `, ${detalhes.join(", ")}` : ""}. Confirmas? — **sim** ou **não**`,
+      estado: {
+        fase: "confirmar_relatorio",
+        tipoRelatorio,
+        formato,
+        marcaFiltro,
+        dataInicio: periodo.dataInicio,
+        pendentesOnly,
+      },
+    }
   }
 
   if (intent.id === "stock_critico" && intent.score >= 0.4) {

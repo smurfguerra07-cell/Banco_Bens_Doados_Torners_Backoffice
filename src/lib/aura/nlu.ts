@@ -340,6 +340,18 @@ export function pedeStockDeToner(mensagem: string): boolean {
   return PALAVRAS_STOCK.some((p) => algumParece(msgTokens, p))
 }
 
+const PALAVRAS_RELATORIO = ["relatorio", "relatorios", "exporta", "exportar"]
+
+/**
+ * Verifica se a mensagem pede explicitamente um relatório/exportação —
+ * checado antes das outras intenções para que "relatório de pedidos
+ * pendentes" não seja apanhado pela intenção genérica de "pedidos".
+ */
+export function pedeRelatorio(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return PALAVRAS_RELATORIO.some((p) => algumParece(msgTokens, p))
+}
+
 const VERBOS_RESPOSTA_TICKET = ["responde", "responder", "respondas", "resposta", "explica", "explicar"]
 
 /** Verifica se a mensagem pede à Aura para responder/explicar um ticket (não só consultar). */

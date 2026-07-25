@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { ArrowUp, Sparkles, X } from "lucide-react"
+import { ArrowUp, FileDown, Sparkles, X } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
+import { useEmpresas } from "@/hooks/useEmpresas"
 import { incrementarStockToner } from "@/services/toners"
 import { enviarMensagem, fetchMensagens, fetchTickets } from "@/services/tickets"
 import { TICKET_CATEGORIA_LABEL, TICKET_ESTADO_LABEL } from "@/types/ticket"
 import { processarMensagem, type AuraState } from "@/lib/aura/conversar"
 import { gerarRespostaTicket } from "@/lib/aura/respostasTicket"
+import { construirRelatorio, TIPO_RELATORIO_LABEL } from "@/lib/aura/relatorios"
+import { criarCsvBlob, criarPdfBlob } from "@/lib/export"
 import { cn } from "@/lib/utils"
 
 const SUGESTOES = [
@@ -27,6 +30,7 @@ interface Mensagem {
   id: string
   autor: "user" | "aura"
   texto: string
+  anexo?: { nome: string; url: string }
 }
 
 const MENSAGEM_INICIAL: Mensagem = {
@@ -74,6 +78,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
   const { data: toners } = useToners()
   const { data: pedidos } = usePedidos()
   const { data: tickets } = useTickets()
+  const { data: empresas } = useEmpresas()
   const queryClient = useQueryClient()
 
   const [mensagens, setMensagens] = useState<Mensagem[]>([MENSAGEM_INICIAL])
@@ -99,8 +104,8 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
   }, [mensagens])
 
-  function adicionar(autor: Mensagem["autor"], texto: string) {
-    setMensagens((m) => [...m, { id: `${Date.now()}-${autor}-${Math.random()}`, autor, texto }])
+  function adicionar(autor: Mensagem["autor"], texto: string, anexo?: Mensagem["anexo"]) {
+    setMensagens((m) => [...m, { id: `${Date.now()}-${autor}-${Math.random()}`, autor, texto, anexo }])
   }
 
   async function executarAcao(
@@ -194,6 +199,41 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
       } finally {
         setAProcessar(false)
       }
+      return
+    }
+
+    if (acao.tipo === "gerar_relatorio") {
+      setAProcessar(true)
+      try {
+        const { linhas, colunas, titulo } = construirRelatorio(acao.tipoRelatorio, {
+          toners: toners ?? [],
+          pedidos: pedidos ?? [],
+          empresas: empresas ?? [],
+          marcaFiltro: acao.marcaFiltro,
+          dataInicio: acao.dataInicio,
+          pendentesOnly: acao.pendentesOnly,
+        })
+        if (linhas.length === 0) {
+          adicionar("aura", `Não há dados para o relatório de **${TIPO_RELATORIO_LABEL[acao.tipoRelatorio]}** com esses filtros.`)
+          return
+        }
+        const nomeBase = titulo.toLowerCase().replace(/\s+/g, "-")
+        const blob =
+          acao.formato === "pdf"
+            ? criarPdfBlob(linhas, colunas, titulo)
+            : criarCsvBlob(linhas, colunas)
+        const nomeFicheiro = `${nomeBase}.${acao.formato}`
+        const url = URL.createObjectURL(blob)
+        adicionar(
+          "aura",
+          `Pronto. O relatório de **${titulo}** (${linhas.length} linha(s)) está pronto a descarregar.`,
+          { nome: nomeFicheiro, url }
+        )
+      } catch {
+        adicionar("aura", MENSAGEM_ERRO_GENERICO)
+      } finally {
+        setAProcessar(false)
+      }
     }
   }
 
@@ -263,8 +303,27 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
                     {m.texto}
                   </div>
                 ) : (
-                  <div className="max-w-full whitespace-pre-line text-sm leading-relaxed text-foreground">
-                    {renderComNegrito(m.texto)}
+                  <div className="max-w-full">
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
+                      {renderComNegrito(m.texto)}
+                    </p>
+                    {m.anexo && (
+                      <a
+                        href={m.anexo.url}
+                        download={m.anexo.nome}
+                        className="mt-2 flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs transition hover:border-primary/20 hover:shadow-[var(--shadow-elegant)]"
+                      >
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <FileDown className="size-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium text-foreground">
+                            {m.anexo.nome}
+                          </span>
+                          <span className="text-muted-foreground">Descarregar ficheiro</span>
+                        </span>
+                      </a>
+                    )}
                   </div>
                 )}
               </div>

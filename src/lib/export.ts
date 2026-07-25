@@ -13,11 +13,7 @@ function valorCelula<T>(linha: T, coluna: ColunaExport<T>): string {
   return String(valor)
 }
 
-export function exportarCsv<T>(
-  dados: T[],
-  colunas: ColunaExport<T>[],
-  nomeFicheiro: string
-) {
+export function criarCsvBlob<T>(dados: T[], colunas: ColunaExport<T>[]): Blob {
   const cabecalho = colunas.map((c) => `"${c.titulo}"`).join(";")
   const linhas = dados.map((linha) =>
     colunas
@@ -25,22 +21,14 @@ export function exportarCsv<T>(
       .join(";")
   )
   const conteudo = "﻿" + [cabecalho, ...linhas].join("\r\n")
-
-  const blob = new Blob([conteudo], { type: "text/csv;charset=utf-8;" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `${nomeFicheiro}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  return new Blob([conteudo], { type: "text/csv;charset=utf-8;" })
 }
 
-export function exportarPdf<T>(
+export function criarPdfBlob<T>(
   dados: T[],
   colunas: ColunaExport<T>[],
-  nomeFicheiro: string,
   titulo: string
-) {
+): Blob {
   const doc = new jsPDF()
   doc.setFontSize(14)
   doc.text(titulo, 14, 16)
@@ -55,5 +43,31 @@ export function exportarPdf<T>(
     headStyles: { fillColor: [30, 75, 143] },
   })
 
-  doc.save(`${nomeFicheiro}.pdf`)
+  return doc.output("blob")
+}
+
+function descarregarBlob(blob: Blob, nomeFicheiro: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = nomeFicheiro
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export function exportarCsv<T>(
+  dados: T[],
+  colunas: ColunaExport<T>[],
+  nomeFicheiro: string
+) {
+  descarregarBlob(criarCsvBlob(dados, colunas), `${nomeFicheiro}.csv`)
+}
+
+export function exportarPdf<T>(
+  dados: T[],
+  colunas: ColunaExport<T>[],
+  nomeFicheiro: string,
+  titulo: string
+) {
+  descarregarBlob(criarPdfBlob(dados, colunas, titulo), `${nomeFicheiro}.pdf`)
 }
