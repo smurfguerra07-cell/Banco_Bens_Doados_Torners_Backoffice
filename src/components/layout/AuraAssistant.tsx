@@ -226,7 +226,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
         const nomeBase = titulo.toLowerCase().replace(/\s+/g, "-")
         const blob =
           acao.formato === "pdf"
-            ? criarPdfBlob(linhas, colunas, titulo)
+            ? await criarPdfBlob(linhas, colunas, titulo)
             : criarCsvBlob(linhas, colunas)
         const nomeFicheiro = `${nomeBase}.${acao.formato}`
         const url = URL.createObjectURL(blob)
@@ -306,7 +306,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
     if (acao.tipo === "gerar_ficha_doacao") {
       setAProcessar(true)
       try {
-        const blob = gerarFichaDoacaoPdf(acao)
+        const blob = await gerarFichaDoacaoPdf(acao)
         const url = URL.createObjectURL(blob)
         adicionar("aura", "Aqui está a ficha de doação.", { nome: "ficha-doacao.pdf", url })
       } catch {
@@ -325,7 +325,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
           adicionar("aura", `Não encontrei o ${acao.tonerLabel}.`)
           return
         }
-        const blob = gerarEtiquetaTonerPdf(toner)
+        const blob = await gerarEtiquetaTonerPdf(toner)
         const url = URL.createObjectURL(blob)
         adicionar("aura", `Aqui está a etiqueta do **${acao.tonerLabel}**.`, {
           nome: `etiqueta-${toner.referencia}.pdf`,
@@ -342,7 +342,7 @@ export function AuraAssistantPanel({ open, onClose }: { open: boolean; onClose: 
     if (acao.tipo === "gerar_briefing") {
       setAProcessar(true)
       try {
-        const blob = gerarBriefingDiarioPdf({ toners: toners ?? [], pedidos: pedidos ?? [], tickets: tickets ?? [] })
+        const blob = await gerarBriefingDiarioPdf({ toners: toners ?? [], pedidos: pedidos ?? [], tickets: tickets ?? [] })
         const url = URL.createObjectURL(blob)
         adicionar("aura", "Aqui está o briefing diário.", {
           nome: `briefing-${new Date().toISOString().slice(0, 10)}.pdf`,

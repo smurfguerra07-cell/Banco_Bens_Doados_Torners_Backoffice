@@ -1,5 +1,6 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { desenharCabecalho, desenharRodape, ESTILO_TABELA } from "@/lib/pdfBranding"
 
 export interface ColunaExport<T> {
   chave: keyof T
@@ -24,23 +25,24 @@ export function criarCsvBlob<T>(dados: T[], colunas: ColunaExport<T>[]): Blob {
   return new Blob([conteudo], { type: "text/csv;charset=utf-8;" })
 }
 
-export function criarPdfBlob<T>(
+export async function criarPdfBlob<T>(
   dados: T[],
   colunas: ColunaExport<T>[],
-  titulo: string
-): Blob {
+  titulo: string,
+  descricao?: string
+): Promise<Blob> {
   const doc = new jsPDF()
-  doc.setFontSize(14)
-  doc.text(titulo, 14, 16)
-  doc.setFontSize(9)
-  doc.text(`Banco de Bens Doados · gerado em ${new Date().toLocaleString("pt-PT")}`, 14, 22)
+  const desc =
+    descricao ?? `${dados.length} registo(s) · gerado em ${new Date().toLocaleString("pt-PT")}.`
+  const startY = await desenharCabecalho(doc, titulo, desc)
 
   autoTable(doc, {
-    startY: 28,
+    startY,
+    margin: { left: 14, right: 14 },
     head: [colunas.map((c) => c.titulo)],
     body: dados.map((linha) => colunas.map((c) => valorCelula(linha, c))),
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [30, 75, 143] },
+    ...ESTILO_TABELA,
+    didDrawPage: (data) => desenharRodape(doc, data.pageNumber),
   })
 
   return doc.output("blob")
@@ -63,11 +65,12 @@ export function exportarCsv<T>(
   descarregarBlob(criarCsvBlob(dados, colunas), `${nomeFicheiro}.csv`)
 }
 
-export function exportarPdf<T>(
+export async function exportarPdf<T>(
   dados: T[],
   colunas: ColunaExport<T>[],
   nomeFicheiro: string,
-  titulo: string
+  titulo: string,
+  descricao?: string
 ) {
-  descarregarBlob(criarPdfBlob(dados, colunas, titulo), `${nomeFicheiro}.pdf`)
+  descarregarBlob(await criarPdfBlob(dados, colunas, titulo, descricao), `${nomeFicheiro}.pdf`)
 }
