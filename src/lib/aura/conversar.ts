@@ -5,6 +5,7 @@ import {
   extrairNumero,
   mencionaTicket,
   pedeRespostaTicket,
+  pedeStockDeToner,
   type CandidatoTicket,
   type CandidatoToner,
 } from "./nlu"
@@ -123,6 +124,12 @@ function respostaListaStock(toners: Toner[]): string {
     partes.push(`Sem stock (${semStock.length}):\n${lista}${resto}`)
   }
   return partes.join("\n\n")
+}
+
+function respostaStockDeToner(toner: Toner): string {
+  const disponivel = toner.quantidade - toner.quantidade_reservada
+  if (disponivel <= 0) return `O **${tonerLabel(toner)}** está sem stock disponível neste momento.`
+  return `O **${tonerLabel(toner)}** tem **${disponivel}** unidade(s) em stock.`
 }
 
 function respostaResumoPedidos(pedidos: Pedido[]): string {
@@ -287,6 +294,21 @@ export function processarMensagem(
         quantidade: numero,
         quantidadeAtual: atual,
       },
+    }
+  }
+
+  // Pergunta sobre o stock de UM toner específico (ex: "stock do HP 85A",
+  // "HP 85A quantas unidades temos?") — reconhecida pelo toner nomeado na
+  // mensagem, não por uma frase fixa, por isso funciona com qualquer ordem
+  // de palavras. Só entra em jogo se nenhuma intenção mais específica (ex:
+  // aumentar_stock, listar_stock) já tiver respondido acima.
+  if (pedeStockDeToner(mensagem)) {
+    const tonerAlvo = encontrarToner(mensagem, candidatos(contexto.toners))
+    if (tonerAlvo && tonerAlvo.score >= 0.34) {
+      const completo = contexto.toners.find((t) => t.id === tonerAlvo.toner.id)
+      if (completo) {
+        return { resposta: respostaStockDeToner(completo), estado: { fase: "idle" } }
+      }
     }
   }
 

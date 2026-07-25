@@ -265,6 +265,34 @@ export function mencionaTicket(mensagem: string): boolean {
   return algumParece(msgTokens, "ticket") || algumParece(msgTokens, "tickets")
 }
 
+const PALAVRAS_STOCK = [
+  "stock",
+  "estoque",
+  "quantidade",
+  "quantas",
+  "quantos",
+  "unidades",
+  "temos",
+  "tenho",
+  "ha",
+  "existe",
+  "disponivel",
+  "disponiveis",
+  "sobra",
+  "sobram",
+]
+
+/**
+ * Verifica se a mensagem pergunta por quantidade/stock — usado para
+ * reconhecer perguntas sobre o stock de UM toner específico,
+ * independentemente da ordem das palavras (ex: "stock do HP 85A" e
+ * "HP 85A quantas unidades temos?" contam como o mesmo pedido).
+ */
+export function pedeStockDeToner(mensagem: string): boolean {
+  const msgTokens = new Set(tokens(mensagem))
+  return PALAVRAS_STOCK.some((p) => algumParece(msgTokens, p))
+}
+
 const VERBOS_RESPOSTA_TICKET = ["responde", "responder", "respondas", "resposta", "explica", "explicar"]
 
 /** Verifica se a mensagem pede à Aura para responder/explicar um ticket (não só consultar). */
