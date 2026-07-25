@@ -53,10 +53,12 @@ export function detetarTipoRelatorio(mensagem: string): TipoRelatorioAura {
   return "inventario"
 }
 
-export function detetarFormatoRelatorio(mensagem: string): "csv" | "pdf" {
+/** Devolve o formato só se foi pedido explicitamente — `null` significa que é preciso perguntar. */
+export function detetarFormatoRelatorio(mensagem: string): "csv" | "pdf" | null {
   const msgTokens = new Set(tokens(mensagem))
   if (algumParece(msgTokens, "pdf") || algumParece(msgTokens, "imprimir")) return "pdf"
-  return "csv"
+  if (algumParece(msgTokens, "excel") || algumParece(msgTokens, "csv")) return "csv"
+  return null
 }
 
 export interface PeriodoRelatorio {

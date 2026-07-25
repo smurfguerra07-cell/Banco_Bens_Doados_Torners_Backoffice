@@ -74,6 +74,14 @@ export type AuraState =
     }
   | { fase: "confirmar_resposta_ticket"; ticketId: string; ticketNumero: number; conteudo: string }
   | {
+      fase: "aguardar_formato_relatorio"
+      tipoRelatorio: TipoRelatorioAura
+      marcaFiltro?: string
+      dataInicio: string | null
+      periodoLabel: string | null
+      pendentesOnly: boolean
+    }
+  | {
       fase: "confirmar_relatorio"
       tipoRelatorio: TipoRelatorioAura
       formato: "csv" | "pdf"
@@ -216,6 +224,21 @@ function marcaParaResposta(mensagem: string, toners: Toner[], memoria?: string):
 /** Mensagem de confirmação antes de qualquer alteração real de stock, sempre com o antes/depois. */
 function mensagemConfirmarAumento(nome: string, atual: number, quantidade: number): string {
   return `Vou atualizar o stock do **${nome}** de **${atual}** para **${atual + quantidade}** unidades.\nEsta alteração fica registada imediatamente.\nConfirmas? — **sim** ou **não**`
+}
+
+function mensagemConfirmarRelatorio(
+  tipoRelatorio: TipoRelatorioAura,
+  formato: "csv" | "pdf",
+  marcaFiltro: string | undefined,
+  periodoLabel: string | null,
+  pendentesOnly: boolean
+): string {
+  const detalhes = [
+    marcaFiltro ? `filtrado por **${marcaFiltro}**` : null,
+    periodoLabel ? `para **${periodoLabel}**` : null,
+    pendentesOnly ? "só os pendentes" : null,
+  ].filter(Boolean)
+  return `Vou gerar um relatório de **${TIPO_RELATORIO_LABEL[tipoRelatorio]}** em **${formato.toUpperCase()}**${detalhes.length > 0 ? `, ${detalhes.join(", ")}` : ""}. Confirmas? — **sim** ou **não**`
 }
 
 /** Encontra o ticket a que a mensagem se refere: por número (prioridade) ou por assunto/quem abriu. */
@@ -436,6 +459,30 @@ export function processarMensagem(
     }
   }
 
+  if (estado.fase === "aguardar_formato_relatorio") {
+    const formato = detetarFormatoRelatorio(mensagem)
+    if (!formato) {
+      return { resposta: "Não percebi — PDF ou Excel?", estado }
+    }
+    return {
+      resposta: mensagemConfirmarRelatorio(
+        estado.tipoRelatorio,
+        formato,
+        estado.marcaFiltro,
+        estado.periodoLabel,
+        estado.pendentesOnly
+      ),
+      estado: {
+        fase: "confirmar_relatorio",
+        tipoRelatorio: estado.tipoRelatorio,
+        formato,
+        marcaFiltro: estado.marcaFiltro,
+        dataInicio: estado.dataInicio,
+        pendentesOnly: estado.pendentesOnly,
+      },
+    }
+  }
+
   if (estado.fase === "confirmar_relatorio") {
     const intent = detetarIntent(mensagem)
     if (intent.id === "confirmar") {
@@ -648,14 +695,22 @@ export function processarMensagem(
     const periodo = detetarPeriodoRelatorio(mensagem)
     const pendentesOnly = pedeApenasPendentes(mensagem)
 
-    const detalhes = [
-      marcaFiltro ? `filtrado por **${marcaFiltro}**` : null,
-      periodo.label ? `para **${periodo.label}**` : null,
-      pendentesOnly ? "só os pendentes" : null,
-    ].filter(Boolean)
+    if (!formato) {
+      return {
+        resposta: `Queres o relatório de **${TIPO_RELATORIO_LABEL[tipoRelatorio]}** em PDF ou em Excel?`,
+        estado: {
+          fase: "aguardar_formato_relatorio",
+          tipoRelatorio,
+          marcaFiltro,
+          dataInicio: periodo.dataInicio,
+          periodoLabel: periodo.label,
+          pendentesOnly,
+        },
+      }
+    }
 
     return {
-      resposta: `Vou gerar um relatório de **${TIPO_RELATORIO_LABEL[tipoRelatorio]}** em **${formato.toUpperCase()}**${detalhes.length > 0 ? `, ${detalhes.join(", ")}` : ""}. Confirmas? — **sim** ou **não**`,
+      resposta: mensagemConfirmarRelatorio(tipoRelatorio, formato, marcaFiltro, periodo.label, pendentesOnly),
       estado: {
         fase: "confirmar_relatorio",
         tipoRelatorio,
