@@ -13,7 +13,7 @@ import { TicketsPage } from "@/pages/TicketsPage"
 import { UtilizadoresPage } from "@/pages/UtilizadoresPage"
 import { RelatoriosPage } from "@/pages/RelatoriosPage"
 import { SettingsPage } from "@/pages/SettingsPage"
-import { podeVerInstituicoes, podeVerTickets, podeVerUtilizadores } from "@/types/profile"
+import { podeVerInstituicoes, podeVerRelatorios, podeVerTickets, podeVerUtilizadores } from "@/types/profile"
 
 const queryClient = new QueryClient()
 
@@ -52,7 +52,14 @@ function App() {
                   </RequireRole>
                 }
               />
-              <Route path="/relatorios" element={<RelatoriosPage />} />
+              <Route
+                path="/relatorios"
+                element={
+                  <RequireRole permitido={podeVerRelatorios}>
+                    <RelatoriosPage />
+                  </RequireRole>
+                }
+              />
               <Route path="/definicoes" element={<SettingsPage />} />
             </Route>
           </Routes>

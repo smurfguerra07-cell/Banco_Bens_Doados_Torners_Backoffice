@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
-import { podeVerInstituicoes, podeVerTickets, podeVerUtilizadores } from "@/types/profile"
+import { podeVerInstituicoes, podeVerRelatorios, podeVerTickets, podeVerUtilizadores } from "@/types/profile"
 import logo from "@/assets/logo.png"
 
 export function AppSidebar() {
@@ -47,7 +47,7 @@ export function AppSidebar() {
     },
     podeVerInstituicoes(profile?.role) && { to: "/empresas", icon: Building2, label: "Instituições" },
     podeVerUtilizadores(profile?.role) && { to: "/utilizadores", icon: Users, label: "Utilizadores" },
-    { to: "/relatorios", icon: FileBarChart, label: "Relatórios" },
+    podeVerRelatorios(profile?.role) && { to: "/relatorios", icon: FileBarChart, label: "Relatórios" },
   ].filter((item): item is Exclude<typeof item, false> => Boolean(item))
 
   const iniciais =

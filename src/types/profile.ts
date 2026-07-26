@@ -24,8 +24,8 @@ export const ROLE_LABEL: Record<UserRole, string> = {
 
 // ---------- Permissões por cargo ----------
 // Administrador: acesso total. Gestor: tudo menos gerir utilizadores.
-// Operador e Leitor: também sem acesso a Utilizadores, Tickets e
-// Instituições (só Dashboard, Inventário, Pedidos e Relatórios).
+// Operador e Leitor: também sem acesso a Utilizadores, Tickets,
+// Instituições e Relatórios (só Dashboard, Inventário e Pedidos).
 
 const CARGOS_GESTAO: UserRole[] = ["administrador", "gestor"]
 
@@ -38,6 +38,10 @@ export function podeVerTickets(role: UserRole | undefined): boolean {
 }
 
 export function podeVerInstituicoes(role: UserRole | undefined): boolean {
+  return Boolean(role && CARGOS_GESTAO.includes(role))
+}
+
+export function podeVerRelatorios(role: UserRole | undefined): boolean {
   return Boolean(role && CARGOS_GESTAO.includes(role))
 }
 
