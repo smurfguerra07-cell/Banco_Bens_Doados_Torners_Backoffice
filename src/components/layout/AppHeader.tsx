@@ -6,11 +6,14 @@ import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
 import { useAlertas } from "@/hooks/useAlertas"
+import { useAuth } from "@/contexts/AuthContext"
+import { podeVerTickets } from "@/types/profile"
 import { AuraAssistantPanel, AuraCommandBar } from "@/components/layout/AuraAssistant"
 
 const LIMITE_STOCK_BAIXO = 3
 
 export function AppHeader() {
+  const { profile } = useAuth()
   const { data: toners } = useToners()
   const { data: pedidos } = usePedidos()
   const { data: tickets } = useTickets()
@@ -18,13 +21,17 @@ export function AppHeader() {
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [notifAberta, setNotifAberta] = useState(false)
 
+  const podeVerTicketsFlag = podeVerTickets(profile?.role)
+
   const pedidosPendentes =
     pedidos?.filter((p) => p.estado === "recebido" || p.estado === "em_analise") ?? []
   const stockBaixo =
     toners?.filter(
       (t) => t.ativo && t.quantidade - t.quantidade_reservada <= LIMITE_STOCK_BAIXO
     ) ?? []
-  const ticketsPorResponder = tickets?.filter((t) => t.estado === "aberto") ?? []
+  const ticketsPorResponder = podeVerTicketsFlag
+    ? (tickets?.filter((t) => t.estado === "aberto") ?? [])
+    : []
   const alertasDisparados = (alertas ?? []).filter((a) => {
     const toner = toners?.find((t) => t.id === a.toner_id)
     return toner && toner.quantidade - toner.quantidade_reservada <= a.limite

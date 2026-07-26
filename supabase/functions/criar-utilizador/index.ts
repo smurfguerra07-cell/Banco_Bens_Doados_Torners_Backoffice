@@ -1,6 +1,7 @@
 // Edge Function: cria um utilizador de staff (login + perfil) sem
 // precisar de confirmação por email. Só pode ser chamada por alguém
-// já autenticado com cargo administrador, gestor ou operador.
+// já autenticado com cargo administrador — gestor e operador não
+// podem criar utilizadores.
 //
 // Usa a service_role key — por isso TEM de correr aqui (servidor),
 // nunca no browser.
@@ -12,7 +13,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
-const CARGOS_COM_PERMISSAO = ["administrador", "gestor", "operador"]
+const CARGOS_COM_PERMISSAO = ["administrador"]
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

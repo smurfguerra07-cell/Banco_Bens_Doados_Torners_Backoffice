@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
+import { podeVerInstituicoes, podeVerTickets, podeVerUtilizadores } from "@/types/profile"
 import logo from "@/assets/logo.png"
 
 export function AppSidebar() {
@@ -38,11 +39,16 @@ export function AppSidebar() {
     { to: "/", icon: LayoutGrid, label: "Dashboard" },
     { to: "/toners", icon: Package, label: "Inventário", count: tonersAtivos },
     { to: "/pedidos", icon: Inbox, label: "Pedidos", badge: pedidosPendentes },
-    { to: "/tickets", icon: LifeBuoy, label: "Tickets", badge: ticketsPorResponder },
-    { to: "/empresas", icon: Building2, label: "Instituições" },
-    { to: "/utilizadores", icon: Users, label: "Utilizadores" },
+    podeVerTickets(profile?.role) && {
+      to: "/tickets",
+      icon: LifeBuoy,
+      label: "Tickets",
+      badge: ticketsPorResponder,
+    },
+    podeVerInstituicoes(profile?.role) && { to: "/empresas", icon: Building2, label: "Instituições" },
+    podeVerUtilizadores(profile?.role) && { to: "/utilizadores", icon: Users, label: "Utilizadores" },
     { to: "/relatorios", icon: FileBarChart, label: "Relatórios" },
-  ]
+  ].filter((item): item is Exclude<typeof item, false> => Boolean(item))
 
   const iniciais =
     profile?.full_name

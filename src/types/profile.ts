@@ -22,6 +22,25 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   cliente: "Cliente",
 }
 
+// ---------- Permissões por cargo ----------
+// Administrador: acesso total. Gestor: tudo menos gerir utilizadores.
+// Operador e Leitor: também sem acesso a Utilizadores, Tickets e
+// Instituições (só Dashboard, Inventário, Pedidos e Relatórios).
+
+const CARGOS_GESTAO: UserRole[] = ["administrador", "gestor"]
+
+export function podeVerUtilizadores(role: UserRole | undefined): boolean {
+  return role === "administrador"
+}
+
+export function podeVerTickets(role: UserRole | undefined): boolean {
+  return Boolean(role && CARGOS_GESTAO.includes(role))
+}
+
+export function podeVerInstituicoes(role: UserRole | undefined): boolean {
+  return Boolean(role && CARGOS_GESTAO.includes(role))
+}
+
 export interface UtilizadorInput {
   full_name: string
   telefone: string | null

@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router"
 import { Toaster } from "react-hot-toast"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { DashboardLayout } from "@/layouts/DashboardLayout"
+import { RequireRole } from "@/components/auth/RequireRole"
 import { LoginPage } from "@/pages/LoginPage"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { ToniersPage } from "@/pages/ToniersPage"
@@ -12,6 +13,7 @@ import { TicketsPage } from "@/pages/TicketsPage"
 import { UtilizadoresPage } from "@/pages/UtilizadoresPage"
 import { RelatoriosPage } from "@/pages/RelatoriosPage"
 import { SettingsPage } from "@/pages/SettingsPage"
+import { podeVerInstituicoes, podeVerTickets, podeVerUtilizadores } from "@/types/profile"
 
 const queryClient = new QueryClient()
 
@@ -26,9 +28,30 @@ function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/toners" element={<ToniersPage />} />
               <Route path="/pedidos" element={<PedidosPage />} />
-              <Route path="/tickets" element={<TicketsPage />} />
-              <Route path="/empresas" element={<EmpresasPage />} />
-              <Route path="/utilizadores" element={<UtilizadoresPage />} />
+              <Route
+                path="/tickets"
+                element={
+                  <RequireRole permitido={podeVerTickets}>
+                    <TicketsPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/empresas"
+                element={
+                  <RequireRole permitido={podeVerInstituicoes}>
+                    <EmpresasPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/utilizadores"
+                element={
+                  <RequireRole permitido={podeVerUtilizadores}>
+                    <UtilizadoresPage />
+                  </RequireRole>
+                }
+              />
               <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/definicoes" element={<SettingsPage />} />
             </Route>
