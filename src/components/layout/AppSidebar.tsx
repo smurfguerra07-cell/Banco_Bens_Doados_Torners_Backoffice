@@ -6,6 +6,7 @@ import {
   BookOpen,
   Building2,
   FileBarChart,
+  Gift,
   Inbox,
   LayoutGrid,
   LifeBuoy,
@@ -19,8 +20,10 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
+import { useDoacoesInteresse } from "@/hooks/useDoacoesInteresse"
 import {
   podeVerConhecimento,
+  podeVerDoacoesInteresse,
   podeVerInstituicoes,
   podeVerRelatorios,
   podeVerTickets,
@@ -35,12 +38,14 @@ export function AppSidebar() {
   const { data: toners } = useToners()
   const { data: pedidos } = usePedidos()
   const { data: tickets } = useTickets()
+  const { data: doacoesInteresse } = useDoacoesInteresse()
   const [menuAberto, setMenuAberto] = useState(false)
 
   const tonersAtivos = toners?.filter((t) => t.ativo).length ?? 0
   const pedidosPendentes =
     pedidos?.filter((p) => p.estado === "recebido" || p.estado === "em_analise").length ?? 0
   const ticketsPorResponder = tickets?.filter((t) => t.estado === "aberto").length ?? 0
+  const interessesNovos = doacoesInteresse?.filter((d) => d.estado === "novo").length ?? 0
 
   const NAV = [
     { to: "/", icon: LayoutGrid, label: "Dashboard" },
@@ -53,6 +58,12 @@ export function AppSidebar() {
       badge: ticketsPorResponder,
     },
     podeVerInstituicoes(profile?.role) && { to: "/empresas", icon: Building2, label: "Instituições" },
+    podeVerDoacoesInteresse(profile?.role) && {
+      to: "/doacoes-interesse",
+      icon: Gift,
+      label: "Interesses de Doação",
+      badge: interessesNovos,
+    },
     podeVerUtilizadores(profile?.role) && { to: "/utilizadores", icon: Users, label: "Utilizadores" },
     podeVerRelatorios(profile?.role) && { to: "/relatorios", icon: FileBarChart, label: "Relatórios" },
     podeVerConhecimento(profile?.role) && {

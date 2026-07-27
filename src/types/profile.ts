@@ -52,6 +52,12 @@ export function podeVerConhecimento(role: UserRole | undefined): boolean {
   return Boolean(role && CARGOS_GESTAO.includes(role))
 }
 
+// Interesses de doação (formulário "Quero Doar" do Portal) — mesma
+// lógica de Instituições, por serem leads de potenciais doadores.
+export function podeVerDoacoesInteresse(role: UserRole | undefined): boolean {
+  return Boolean(role && CARGOS_GESTAO.includes(role))
+}
+
 export interface UtilizadorInput {
   full_name: string
   telefone: string | null

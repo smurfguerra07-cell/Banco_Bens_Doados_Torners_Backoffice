@@ -16,9 +16,11 @@ import { ConhecimentoPage } from "@/pages/ConhecimentoPage"
 import { ConhecimentoArtigoPage } from "@/pages/ConhecimentoArtigoPage"
 import { ConhecimentoEstatisticasPage } from "@/pages/ConhecimentoEstatisticasPage"
 import { PerguntasSemRespostaPage } from "@/pages/PerguntasSemRespostaPage"
+import { DoacoesInteressePage } from "@/pages/DoacoesInteressePage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import {
   podeVerConhecimento,
+  podeVerDoacoesInteresse,
   podeVerInstituicoes,
   podeVerRelatorios,
   podeVerTickets,
@@ -99,6 +101,14 @@ function App() {
                 element={
                   <RequireRole permitido={podeVerConhecimento}>
                     <ConhecimentoArtigoPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/doacoes-interesse"
+                element={
+                  <RequireRole permitido={podeVerDoacoesInteresse}>
+                    <DoacoesInteressePage />
                   </RequireRole>
                 }
               />
