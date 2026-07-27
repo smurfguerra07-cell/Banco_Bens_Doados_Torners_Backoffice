@@ -6,12 +6,13 @@ export const TICKET_ESTADO_LABEL: Record<TicketEstado, string> = {
   fechado: "Fechado",
 }
 
-export type TicketCategoria = "duvidas" | "devolucao" | "outro"
+export type TicketCategoria = "duvidas" | "devolucao" | "outro" | "aura"
 
 export const TICKET_CATEGORIA_LABEL: Record<TicketCategoria, string> = {
   duvidas: "Dúvidas",
   devolucao: "Devolução",
   outro: "Outro",
+  aura: "Escalado pela Aura",
 }
 
 export interface Ticket {
@@ -31,7 +32,8 @@ export type AnexoTipo = "imagem" | "audio"
 export interface TicketMensagem {
   id: string
   ticket_id: string
-  autor_id: string
+  /** null = mensagem da Aura (não há um "utilizador Aura" a sério). */
+  autor_id: string | null
   conteudo: string | null
   anexo_url: string | null
   anexo_tipo: AnexoTipo | null

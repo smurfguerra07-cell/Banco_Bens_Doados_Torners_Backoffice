@@ -45,6 +45,13 @@ export function podeVerRelatorios(role: UserRole | undefined): boolean {
   return Boolean(role && CARGOS_GESTAO.includes(role))
 }
 
+// Centro de Conhecimento da Aura: só gestor/administrador criam/editam
+// artigos (mesma lógica de Relatórios). Leitura dos artigos publicados
+// no Portal é pública e não passa por este cargo.
+export function podeVerConhecimento(role: UserRole | undefined): boolean {
+  return Boolean(role && CARGOS_GESTAO.includes(role))
+}
+
 export interface UtilizadorInput {
   full_name: string
   telefone: string | null

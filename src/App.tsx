@@ -12,8 +12,18 @@ import { EmpresasPage } from "@/pages/EmpresasPage"
 import { TicketsPage } from "@/pages/TicketsPage"
 import { UtilizadoresPage } from "@/pages/UtilizadoresPage"
 import { RelatoriosPage } from "@/pages/RelatoriosPage"
+import { ConhecimentoPage } from "@/pages/ConhecimentoPage"
+import { ConhecimentoArtigoPage } from "@/pages/ConhecimentoArtigoPage"
+import { ConhecimentoEstatisticasPage } from "@/pages/ConhecimentoEstatisticasPage"
+import { PerguntasSemRespostaPage } from "@/pages/PerguntasSemRespostaPage"
 import { SettingsPage } from "@/pages/SettingsPage"
-import { podeVerInstituicoes, podeVerRelatorios, podeVerTickets, podeVerUtilizadores } from "@/types/profile"
+import {
+  podeVerConhecimento,
+  podeVerInstituicoes,
+  podeVerRelatorios,
+  podeVerTickets,
+  podeVerUtilizadores,
+} from "@/types/profile"
 
 const queryClient = new QueryClient()
 
@@ -57,6 +67,38 @@ function App() {
                 element={
                   <RequireRole permitido={podeVerRelatorios}>
                     <RelatoriosPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/conhecimento"
+                element={
+                  <RequireRole permitido={podeVerConhecimento}>
+                    <ConhecimentoPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/conhecimento/estatisticas"
+                element={
+                  <RequireRole permitido={podeVerConhecimento}>
+                    <ConhecimentoEstatisticasPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/conhecimento/perguntas-sem-resposta"
+                element={
+                  <RequireRole permitido={podeVerConhecimento}>
+                    <PerguntasSemRespostaPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/conhecimento/:id"
+                element={
+                  <RequireRole permitido={podeVerConhecimento}>
+                    <ConhecimentoArtigoPage />
                   </RequireRole>
                 }
               />

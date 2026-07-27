@@ -1,12 +1,13 @@
 import { type ChangeEvent, type FormEvent, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
-import { ImagePlus, Mic, Send, Square, User, X, XCircle } from "lucide-react"
+import { ImagePlus, Mic, Send, Sparkles, Square, User, X, XCircle } from "lucide-react"
 import toast from "react-hot-toast"
 import { useAuth } from "@/contexts/AuthContext"
 import { useAlterarEstadoTicket, useEnviarMensagem, useMensagens } from "@/hooks/useTickets"
 import { uploadAnexoTicket } from "@/services/tickets"
 import { TICKET_CATEGORIA_LABEL, TICKET_ESTADO_LABEL, type Ticket, type TicketEstado } from "@/types/ticket"
+import { MarkdownLite } from "@/lib/markdownLite"
 import { cn } from "@/lib/utils"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
@@ -153,19 +154,30 @@ export function TicketChatModal({ ticket, onClose }: { ticket: Ticket | null; on
                   </p>
                 )}
                 {mensagens?.map((msg) => {
-                  const daEquipa = msg.autor_id !== ticket.profile_id
+                  const daAura = msg.autor_id === null
+                  const daEquipa = !daAura && msg.autor_id !== ticket.profile_id
                   return (
                     <div
                       key={msg.id}
-                      className={cn("flex", daEquipa ? "justify-end" : "justify-start")}
+                      className={cn("flex flex-col", daEquipa ? "items-end" : "items-start")}
                     >
+                      {daAura && (
+                        <span className="mb-1 flex items-center gap-1 px-1 text-xs font-medium text-primary">
+                          <Sparkles className="size-3" />
+                          Aura
+                        </span>
+                      )}
                       <div
                         className={cn(
                           "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm",
-                          daEquipa ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          daEquipa
+                            ? "bg-primary text-primary-foreground"
+                            : daAura
+                              ? "bg-primary/5 text-foreground"
+                              : "bg-muted text-foreground"
                         )}
                       >
-                        {msg.conteudo && <p className="whitespace-pre-wrap">{msg.conteudo}</p>}
+                        {msg.conteudo && (daAura ? <MarkdownLite texto={msg.conteudo} /> : <p className="whitespace-pre-wrap">{msg.conteudo}</p>)}
                         {msg.anexo_tipo === "imagem" && msg.anexo_url && (
                           <img
                             src={msg.anexo_url}

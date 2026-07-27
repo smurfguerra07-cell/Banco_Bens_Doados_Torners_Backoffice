@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router"
 import toast from "react-hot-toast"
 import { AnimatePresence, motion } from "framer-motion"
 import {
+  BookOpen,
   Building2,
   FileBarChart,
   Inbox,
@@ -18,7 +19,13 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useToners } from "@/hooks/useToners"
 import { usePedidos } from "@/hooks/usePedidos"
 import { useTickets } from "@/hooks/useTickets"
-import { podeVerInstituicoes, podeVerRelatorios, podeVerTickets, podeVerUtilizadores } from "@/types/profile"
+import {
+  podeVerConhecimento,
+  podeVerInstituicoes,
+  podeVerRelatorios,
+  podeVerTickets,
+  podeVerUtilizadores,
+} from "@/types/profile"
 import logo from "@/assets/logo.png"
 
 export function AppSidebar() {
@@ -48,6 +55,11 @@ export function AppSidebar() {
     podeVerInstituicoes(profile?.role) && { to: "/empresas", icon: Building2, label: "Instituições" },
     podeVerUtilizadores(profile?.role) && { to: "/utilizadores", icon: Users, label: "Utilizadores" },
     podeVerRelatorios(profile?.role) && { to: "/relatorios", icon: FileBarChart, label: "Relatórios" },
+    podeVerConhecimento(profile?.role) && {
+      to: "/conhecimento",
+      icon: BookOpen,
+      label: "Centro de Conhecimento",
+    },
   ].filter((item): item is Exclude<typeof item, false> => Boolean(item))
 
   const iniciais =
